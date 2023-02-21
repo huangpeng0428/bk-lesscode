@@ -21,7 +21,6 @@
                 id="toolActionBox"
                 class="function-and-tool">
                 <operation-select v-model="operationType" :hide-json="['FORM_MANAGE', 'FLOW_MANAGE', 'MARKDOWN'].includes(nocodeType)" :hide-func="nocodeType === 'MARKDOWN'" />
-                <div class="spilt-line" />
                 <!-- 保存、预览、快捷键等tool单独抽离 -->
                 <action-tool :hide-clear="['FORM_MANAGE', 'FLOW_MANAGE', 'MARKDOWN'].includes(nocodeType)" :hide-func="nocodeType === 'MARKDOWN'" />
             </div>
@@ -169,7 +168,7 @@
     }
 </script>
 <style lang="postcss">
-    $headerHeight: 64px;
+    $headerHeight: 52px;
     $pageHeaderHeight: 52px;
 
     .lessocde-editor-page {
@@ -209,6 +208,7 @@
             background-color: #dcdee5;
         }
         .actions-links-area {
+            margin-right: 10px;
             display: flex;
             align-items: center;
             .extra-links {

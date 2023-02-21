@@ -61,6 +61,7 @@
                 fileList: displayList,
                 maxImageSize: FILE_MAX_LIMIT.IMAGE_SIZE,
                 maxFileSize: FILE_MAX_LIMIT.FILE_SIZE,
+                maxlength: 20,
                 beforeRemove: async (file) => {
                     if (!file.id) {
                         return
@@ -106,6 +107,7 @@
                 params: paramsData.value,
                 maxImageSize: baseUploadProps.maxImageSize,
                 maxFileSize: baseUploadProps.maxFileSize,
+                maxlength: baseUploadProps.maxlength,
                 onStart: handleStart,
                 onProgress: handleProgress,
                 onSuccess: handleSuccess,
@@ -141,6 +143,10 @@
                 viewerProps.initialIndex = previewFileList.findIndex(item => item === file)
             }
 
+            function handleExport () {
+                window.open(`/api/file/export?projectId=${projectId.value}`, '_self')
+            }
+
             function handleClosePreviewViewer () {
                 isShowPreviewViewer.value = false
             }
@@ -168,6 +174,7 @@
                 isShowPreviewViewer,
                 handleClosePreviewViewer,
                 handleSearch,
+                handleExport,
                 handleToggleDisplayType,
                 handleRemove,
                 handleView
@@ -213,6 +220,7 @@
                         <i class="bk-drag-icon bk-drag-display-list"></i>
                     </div>
                 </div>
+                <bk-button :disabled="!uploadFiles.length" @click="handleExport" style="margin-left: 10px">导出文件</bk-button>
             </div>
         </div>
         <div :class="['page-body', 'file-manage-body', { 'is-empty': !uploadFiles.length }]" v-bkloading="{ isLoading: listLoading }">

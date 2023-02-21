@@ -87,23 +87,19 @@
                                         <a href="javascript:;" slot="allow" @click="handleRename(project)">重命名</a>
                                     </auth-component>
                                 </li>
-                                <!-- <li>
-                                    <auth-component :permission="project.canDeploy" auth="deploy_app" :resource-id="project.id">
-                                        <a href="javascript:;" slot="forbid">部署</a>
-                                        <a href="javascript:;" slot="allow" @click="handleRelease(project.id)">部署</a>
-                                    </auth-component>
-                                </li> -->
                                 <li>
                                     <auth-component :permission="project.canDevelop" auth="develop_app" :resource-id="project.id">
                                         <a href="javascript:;" slot="forbid">复制</a>
                                         <a href="javascript:;" slot="allow" @click="handleCopy(project)">复制</a>
                                     </auth-component>
                                 </li>
+                                <li>
+                                    <auth-component :permission="project.canDevelop" auth="develop_app" :resource-id="project.id">
+                                        <a href="javascript:;" slot="forbid">导出</a>
+                                        <a href="javascript:;" slot="allow" @click="handleExport(project)">导出</a>
+                                    </auth-component>
+                                </li>
                                 <li v-if="iamNoResourcesPerm[$IAM_ACTION.manage_template[0]]">
-                                    <!-- <auth-component :permission="project.canDevelop" auth="script/create">
-                                        <a href="javascript:;" slot="forbid">设为模板</a>
-                                        <a href="javascript:;" slot="allow" @click="handleSetTemplate(project)">设为模板</a>
-                                    </auth-component> -->
                                     <a href="javascript:;" @click="handleSetTemplate(project)">设为模板</a>
                                 </li>
                             </ul>
@@ -111,7 +107,7 @@
                     </div>
                 </div>
                 <span class="favorite-btn">
-                    <i class="bk-icon icon-info-circle" v-bk-tooltips.top="{ content: project.projectDesc }"></i>
+                    <i class="bk-icon icon-info-circle" v-bk-tooltips.top="{ content: project.projectDesc, allowHTML: false }"></i>
                     <!-- <i :class="['bk-drag-icon', `bk-drag-favorite${project.favorite ? '' : '-o' }`]"
                         v-bk-tooltips.top="{ content: project.favorite ? '取消收藏' : '添加收藏' }"
                         @click.stop="handleClickFavorite(project)"
@@ -203,6 +199,9 @@
             },
             handleCopy (project) {
                 this.$emit('copy', project)
+            },
+            handleExport (project) {
+                this.$emit('export', project)
             },
             handleSetTemplate (project) {
                 this.$emit('set-template', project)
