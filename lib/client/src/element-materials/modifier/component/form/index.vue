@@ -16,8 +16,7 @@
     >
         <init-form :component-node="componentNode" :handle-submit-form-item="handleSubmitFormItem" />
         <div class="form-title">
-            表单内容配置
-        </div>
+            {{ $t('表单内容配置') }} </div>
         <div
             class="form-item-list">
             <vue-draggable
@@ -63,8 +62,10 @@
         <div
             class="table-column-add"
             @click="handleShowOperation(null)">
-            继续添加表单项
-        </div>
+            {{ $t('继续添加表单项') }} </div>
+
+        <form-button-setting :button-setting="componentNode.prop.btnSetting || {}" :handle-update-btn-item="handleUpdateBtn">
+        </form-button-setting>
 
         <form-item-edit
             :is-show="isShowOperation"
@@ -79,6 +80,7 @@
     import { camelCase, camelCaseTransformMerge } from 'change-case'
     import formItemEdit from './components/form-item-edit'
     import initForm from './components/init-form'
+    import formButtonSetting from './components/form-button-setting'
     import { getSubmitFormDataFunc, getResetFormValueFunc } from './components/form-helper'
 
     const getDefaultValFromType = (type) => {
@@ -121,6 +123,7 @@
         name: '',
         components: {
             formItemEdit,
+            formButtonSetting,
             initForm
         },
         inheritAttrs: false,
@@ -128,7 +131,10 @@
             return {
                 isShow: false,
                 isShowOperation: false,
-                editFormItemData: {}
+                editFormItemData: {},
+                initPayload: {},
+                submitBtnNode: null,
+                cancelBtnNode: null
             }
         },
 
@@ -202,6 +208,141 @@
                 this.editFormItemNode = formItemNode
                 this.isShowOperation = true
             },
+
+            setSubmitBtn () {
+                if (this.submitBtnNode) return _.cloneDeep(this.submitBtnNode)
+                const payload = this.initPayload || {}
+                // 提交按钮
+                const submitBtnNode = LC.createNode('bk-button')
+                submitBtnNode.setRenderSlots({
+                    format: 'value',
+                    component: 'text',
+                    code: this.$t('提交'),
+                    valueType: 'text',
+                    renderValue: this.$t('提交')
+                })
+                
+                submitBtnNode.setProp('theme', LC.utils.genPropFormatValue({
+                    format: 'value',
+                    code: 'primary',
+                    renderValue: 'primary'
+                }))
+                
+                // 绑定click事件并生成事件模板
+                submitBtnNode.setRenderEvents({
+                    click: {
+                        enable: true,
+                        methodCode: '',
+                        params: [],
+                        eventTemplates: [
+                            {
+                                funcName: 'submitFormData',
+                                funcParams: [],
+                                funcBody: getSubmitFormDataFunc({
+                                    '{ref}': this.componentNode.prop.ref,
+                                    '{formmodel}': this.formModelKey,
+                                    '{posturl}': payload.initType === 'table-data-source' ? `/data-source/user/tableName/${payload.tableData.tableName}` : '/api/data/postMockData',
+                                    '{urlTips}': payload.initType === 'table-data-source' ? window.i18n.t('此地址会将数据提交到lesscode创建的数据表，{0}为选择的表名称，若需提交到其它接口请作相应修改', [payload.tableData.tableName]) : this.$t('示例链接/api/data/postMockData需要更换为具体的接口API地址')
+                                })
+                            }
+                        ]
+                    }
+                })
+                return submitBtnNode
+            },
+
+            setCancelBtn () {
+                if (this.cancelBtnNode) return _.cloneDeep(this.cancelBtnNode)
+                // 取消按钮
+                const cancelBtnNode = LC.createNode('bk-button')
+                cancelBtnNode.setRenderSlots({
+                    format: 'value',
+                    component: 'text',
+                    code: this.$t('取消'),
+                    valueType: 'text',
+                    renderValue: this.$t('取消')
+                })
+                cancelBtnNode.setStyle({
+                    'marginLeft': '8px'
+                })
+                // 绑定click事件并生成事件模板
+                cancelBtnNode.setRenderEvents({
+                    click: {
+                        enable: true,
+                        methodCode: '',
+                        params: [],
+                        eventTemplates: [
+                            {
+                                funcName: 'resetFormData',
+                                funcParams: [],
+                                funcBody: getResetFormValueFunc(this.formModelKey)
+                            }
+                        ]
+                    }
+                })
+                return cancelBtnNode
+            },
+
+            // 设置操作按钮
+            handleSetBtnItem () {
+                // 记录设置前是否已有按钮
+                let hasBtnItem = true
+
+                let btnItemNode = _.find(this.componentNode.children, node => !node.prop.property)
+                const btnSetting = this.componentNode.prop?.btnSetting
+                
+                if (!btnItemNode) {
+                    hasBtnItem = false
+                    btnItemNode = LC.createNode('widget-form-item')
+                }
+                // 找出提交按钮跟取消按钮
+                let submitItem = null
+                let cancelItem = null
+                if (btnItemNode.children.length > 1) {
+                    submitItem = btnItemNode.children[0]
+                    cancelItem = btnItemNode.children[1]
+                } else if (btnItemNode.children.length === 1) {
+                    const item = btnItemNode.children[0]
+                    // 如果只有一个，目前只能根据主题是否为default粗略判断
+                    if (item?.prop?.theme === 'default') {
+                        cancelItem = item
+                    } else {
+                        submitItem = item
+                    }
+                }
+                    
+                // 增加或删除提交按钮
+                if (submitItem && btnSetting?.SHOW_SUBMIT_BTN === false) {
+                    this.submitBtnNode = _.cloneDeep(submitItem)
+                    btnItemNode.removeChild(submitItem)
+                } else if (!submitItem && btnSetting?.SHOW_SUBMIT_BTN !== false) {
+                    btnItemNode.renderSlots.default?.splice(0, 0, this.setSubmitBtn())
+                }
+                // 增加或删除取消按钮
+                if (cancelItem && btnSetting?.SHOW_CANCEL_BTN === false) {
+                    this.cancelBtnNode = _.cloneDeep(cancelItem)
+                    btnItemNode.removeChild(cancelItem)
+                } else if (!cancelItem && btnSetting?.SHOW_CANCEL_BTN !== false) {
+                    btnItemNode.appendChild(this.setCancelBtn())
+                }
+
+                if (btnItemNode.children.length) {
+                    !hasBtnItem && this.componentNode.appendChild(btnItemNode)
+                    return btnItemNode
+                } else {
+                    hasBtnItem && this.componentNode.removeChild(btnItemNode)
+                    return null
+                }
+            },
+
+            handleUpdateBtn (btnSetting) {
+                this.componentNode.setProp('btnSetting', LC.utils.genPropFormatValue({
+                    format: 'value',
+                    code: btnSetting,
+                    renderValue: btnSetting
+                }))
+                this.handleSetBtnItem()
+            },
             /**
              * @desc 提交表单项
             */
@@ -252,82 +393,9 @@
                     ])
                 }
 
-                const setBtnFormItem = () => {
-                    // 提交按钮
-                    const submitBtnNode = LC.createNode('bk-button')
-                    submitBtnNode.setRenderSlots({
-                        format: 'value',
-                        component: 'text',
-                        code: '提交',
-                        valueType: 'text',
-                        renderValue: '提交'
-                    })
-                    
-                    submitBtnNode.setProp('theme', LC.utils.genPropFormatValue({
-                        format: 'value',
-                        code: 'primary',
-                        renderValue: 'primary'
-                    }))
-                    submitBtnNode.setStyle({
-                        width: '88px'
-                    })
-                    
-                    // 绑定click事件并生成事件模板
-                    submitBtnNode.setRenderEvents({
-                        click: {
-                            enable: true,
-                            methodCode: '',
-                            params: [],
-                            eventTemplates: [
-                                {
-                                    funcName: 'submitFormData',
-                                    funcParams: [],
-                                    funcBody: getSubmitFormDataFunc({
-                                        '{ref}': this.componentNode.prop.ref,
-                                        '{formmodel}': this.formModelKey,
-                                        '{posturl}': payload.initType === 'table-data-source' ? `/data-source/user/tableName/${payload.tableData.tableName}` : '/api/data/postMockData',
-                                        '{urlTips}': payload.initType === 'table-data-source' ? `此地址会将数据提交到lesscode创建的数据表，${payload.tableData.tableName}为选择的表名称，若需提交到其它接口请作相应修改` : '示例链接/api/data/postMockData需要更换为具体的接口API地址'
-                                    })
-                                }
-                            ]
-                        }
-                    })
-                    // 取消按钮
-                    const cancelBtnNode = LC.createNode('bk-button')
-                    cancelBtnNode.setRenderSlots({
-                        format: 'value',
-                        component: 'text',
-                        code: '取消',
-                        valueType: 'text',
-                        renderValue: '取消'
-                    })
-                    cancelBtnNode.setStyle({
-                        width: '88px',
-                        'marginLeft': '8px'
-                    })
-                    // 绑定click事件并生成事件模板
-                    cancelBtnNode.setRenderEvents({
-                        click: {
-                            enable: true,
-                            methodCode: '',
-                            params: [],
-                            eventTemplates: [
-                                {
-                                    funcName: 'resetFormData',
-                                    funcParams: [],
-                                    funcBody: getResetFormValueFunc(this.formModelKey)
-                                }
-                            ]
-                        }
-                    })
-                    let actionFormItemNode = null
-                    actionFormItemNode = LC.createNode('widget-form-item')
-                    actionFormItemNode.appendChild(submitBtnNode)
-                    actionFormItemNode.appendChild(cancelBtnNode)
-                    this.componentNode.appendChild(actionFormItemNode)
-                    return actionFormItemNode
+                if (payload?.initType) {
+                    this.initPayload = payload
                 }
-
                 if (this.editFormItemNode) {
                     // 编辑
                     // const editFormItemDataProp = this.editFormItemNode.prop
@@ -356,11 +424,15 @@
                     // 新建表单的操作按钮
                     // prop.property 为空表示为 form 的操作项
                     let actionFormItemNode = _.find(this.componentNode.children, node => !node.prop.property)
+                    // 如果为空，则设置一次按钮
+                    !actionFormItemNode && (actionFormItemNode = this.handleSetBtnItem())
                     if (!actionFormItemNode) {
-                        actionFormItemNode = setBtnFormItem()
+                        // 没有操作按钮，放到最后
+                        this.componentNode.appendChild(formItemNode)
+                    } else {
+                        // 新建的表单项放在操作按钮的前面
+                        this.componentNode.insertBefore(formItemNode, actionFormItemNode)
                     }
-                    // 新建的表单项放在操作按钮的前面
-                    this.componentNode.insertBefore(formItemNode, actionFormItemNode)
                 }
 
                 // 更新model和rules
@@ -380,6 +452,7 @@
                         renderValue: newPropRules
                     })
                 })
+                window.leaveConfirm = false
                 this.isShowOperation = false
             },
             updateFormModel () {

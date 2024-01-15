@@ -1,6 +1,6 @@
 <template>
-    <bk-form :label-width="180" :model="form" ref="funcForm" :form-type="formType" class="func-detail">
-        <bk-form-item label="函数类型" property="funcType" class="func-form-item">
+    <lc-form :label-width="200" :model="form" ref="funcForm" :form-type="formType" class="func-detail">
+        <lc-form-item :label="$t('form_函数类型')" property="funcType" class="func-form-item">
             <bk-radio-group
                 :value="form.funcType"
                 @change="(funcType) => updateValue({ funcType })"
@@ -14,33 +14,33 @@
                 >
                     {{ temp.name }}
                     <i
-                        class="bk-icon icon-info ml5"
+                        class="bk-icon icon-info"
                         v-if="temp.info"
-                        v-bk-tooltips="{ content: temp.info, allowHtml: true }"
+                        v-bk-tooltips="{ content: temp.info, allowHtml: true, maxWidth: 400 }"
                     ></i>
                 </bk-radio-button>
             </bk-radio-group>
-        </bk-form-item>
-        <bk-form-item
-            label="函数调用参数"
+        </lc-form-item>
+        <lc-form-item
+            :label="$t('form_函数调用参数')"
             ref="funcParams"
             property="funcParams"
             error-display-type="normal"
             class="func-form-item"
-            :rules="[getParamRule('函数调用参数')]"
-            :desc="{ width: 350, content: '调用该函数传入的参数列表，如果函数用于组件事件，则这里是组件事件回调的参数，组件事件回调参数具体可见组件文档。' }">
+            :rules="[getParamRule($t('form_函数调用参数'))]"
+            :desc="{ width: 350, content: $t('调用该函数传入的参数列表，如果函数用于组件事件，则这里是组件事件回调的参数，组件事件回调参数具体可见组件文档。') }">
             <dynamic-tag
                 :disabled="disabled"
                 v-model="form.funcParams"
                 @change="(val) => tagChange('funcParams', val)">
             </dynamic-tag>
-        </bk-form-item>
+        </lc-form-item>
         <template v-if="form.funcType === 1">
-            <bk-form-item
-                label="Api"
+            <lc-form-item
+                label="API"
                 property="apiChoosePath"
                 error-display-type="normal"
-                desc="使用 Api 管理的 api 做为模板，快速生成远程函数"
+                :desc="$t('使用 Api 管理的 api 做为模板，快速生成远程函数')"
                 class="func-form-item"
             >
                 <choose-api
@@ -48,16 +48,18 @@
                     :disabled="disabled"
                     @change="handleSelectApi"
                 ></choose-api>
-            </bk-form-item>
-            <bk-form-item
+            </lc-form-item>
+            <lc-form-item
                 ref="funcApiUrl"
-                label="请求地址"
+                :label="$t('form_请求地址')"
                 property="funcApiUrl"
                 error-display-type="normal"
                 class="func-form-item"
-                desc="1. 请求地址中可以使用 {变量标识} 的格式来使用变量。<br> 2. 应用自建 API 和 数据表操作 API 的地址不可修改，每次执行实时获取 API 地址 <br> 3. 如果地址中有*，表示可以匹配任意字符串，请替换成真实的路径"
+                :desc="`1. ${$t('请求地址中可以使用 {变量标识} 的格式来使用变量')}<br>
+                        2. ${$t('应用自建 API 和 数据表操作 API 的地址不可修改，每次执行实时获取 API 地址')}<br>
+                        3. ${$t('如果地址中有*，表示可以匹配任意字符串，请替换成真实的路径')}`"
                 :required="true"
-                :rules="[requireRule('请求地址')]"
+                :rules="[requireRule($t('form_请求地址'))]"
             >
                 <bk-input
                     v-bkloading="{ isLoading: isLoadingUrl }"
@@ -65,14 +67,14 @@
                     :disabled="disableEditUrl"
                     @change="(funcApiUrl) => updateValue({ funcApiUrl })"
                 ></bk-input>
-            </bk-form-item>
-            <bk-form-item
-                label="请求类型"
+            </lc-form-item>
+            <lc-form-item
+                :label="$t('form_请求类型')"
                 property="funcMethod"
                 error-display-type="normal"
                 class="func-form-item"
                 :required="true"
-                :rules="[requireRule('请求类型')]"
+                :rules="[requireRule($t('form_请求类型'))]"
             >
                 <bk-select
                     :value="form.funcMethod"
@@ -87,71 +89,109 @@
                         :name="apiMethodName">
                     </bk-option>
                 </bk-select>
-            </bk-form-item>
-            <bk-form-item property="withToken" class="func-form-item" v-if="showToken">
+            </lc-form-item>
+            <lc-form-item property="withToken" class="func-form-item" v-if="showToken">
                 <bk-checkbox
                     :true-value="1"
                     :false-value="0"
                     :value="form.withToken"
                     v-bk-tooltips="{
-                        content: '勾选后会在请求中携带 Api gateway 所需的认证信息（该认证信息根据发送请求用户和绑定应用生成）'
+                        content: $t('勾选后会在请求中携带 Api gateway 所需的认证信息（该认证信息根据发送请求用户和绑定应用生成）'),
+                        window: 300
                     }"
                     @change="(withToken) => updateValue({ withToken })"
-                >蓝鲸应用认证</bk-checkbox>
-            </bk-form-item>
-            <bk-button
-                class="get-remote-response bk-form-item func-form-item"
-                size="small"
-                :loading="isLoadingResponse"
-                @click="getRemoteResponse"
-            >获取接口返回数据</bk-button>
-            <bk-form-item
+                >{{ $t('蓝鲸应用认证') }}</bk-checkbox>
+            </lc-form-item>
+            <lc-form-item
+                property="apiHeader"
+                error-display-type="normal"
+                class="func-form-item"
+                :label="$t('form_请求头')"
+            >
+                <header-params
+                    class="mt38"
+                    ref="headerParams"
+                    :query="form.apiHeader"
+                    :disabled="disabled"
+                    :variable-list="variableList"
+                    :function-list="functionList"
+                    :api-list="apiList"
+                    @change="(apiHeader) => updateValue({ apiHeader })"
+                />
+            </lc-form-item>
+            <lc-form-item
                 v-if="METHODS_WITHOUT_DATA.includes(form.funcMethod)"
-                label="请求参数"
-                property="remoteParams"
+                :label="$t('form_请求参数')"
+                property="apiQuery"
                 error-display-type="normal"
                 class="func-form-item">
                 <query-params
+                    v-bkloading="{ isLoading: isLoadingOptions }"
                     class="mt38"
+                    ref="queryParams"
                     :query="form.apiQuery"
                     :disabled="disabled"
                     :variable-list="variableList"
+                    :function-list="functionList"
+                    :api-list="apiList"
+                    :name-options="nameOptions"
                     @change="(apiQuery) => updateValue({ apiQuery })"
-                ></query-params>
-            </bk-form-item>
-            <bk-form-item
+                >
+                    <bk-button
+                        class="mt10 mr10"
+                        size="small"
+                        :loading="isLoadingResponse"
+                        @click="getRemoteResponse"
+                        v-enStyle="'left: 140px'"
+                    >{{ $t('获取接口返回数据') }}</bk-button>
+                </query-params>
+            </lc-form-item>
+            <lc-form-item
                 v-else
-                label="请求参数"
-                property="remoteParams"
+                :label="$t('form_请求参数')"
+                property="apiBody"
                 error-display-type="normal"
                 class="func-form-item">
                 <body-params
+                    v-bkloading="{ isLoading: isLoadingOptions }"
                     class="mt38"
+                    ref="bodyParams"
                     :body="form.apiBody"
                     :disabled="disabled"
                     :variable-list="variableList"
+                    :function-list="functionList"
+                    :api-list="apiList"
+                    :name-options="nameOptions"
                     @change="(apiBody) => updateValue({ apiBody })"
                 >
+                    <bk-button
+                        class="mt10 mr10"
+                        size="small"
+                        :loading="isLoadingResponse"
+                        @click="getRemoteResponse"
+                        v-enStyle="'left: 140px'"
+                    >{{ $t('获取接口返回数据') }}</bk-button>
                 </body-params>
-            </bk-form-item>
-            <bk-form-item
-                label="接口返回数据参数名"
+            </lc-form-item>
+            <lc-form-item
+                :label="$t('form_接口返回数据参数名')"
+                :label-width="$store.state.Language === 'en' ? 315 : 180"
                 ref="remoteParams"
                 property="remoteParams"
                 error-display-type="normal"
-                desc="该参数用于接收Api返回数据，在函数中直接可使用该变量名来操作Api返回数据"
+                :desc="$t('该参数用于接收Api返回数据，在函数中直接可使用该变量名来操作Api返回数据')"
                 class="func-form-item"
-                :rules="[getParamRule('接口返回数据参数名')]">
+                :rules="[getParamRule($t('form_接口返回数据参数名'))]">
                 <dynamic-tag
                     :disabled="disabled"
                     v-model="form.remoteParams"
                     @change="(val) => tagChange('remoteParams', val)">
                 </dynamic-tag>
-            </bk-form-item>
+            </lc-form-item>
         </template>
         <bk-dialog
             width="1000"
-            title="查看接口返回值"
+            :title="$t('查看接口返回值')"
             v-model="showFuncResponse.show"
         >
             <monaco
@@ -160,13 +200,14 @@
                 :value="showFuncResponse.code"
             />
         </bk-dialog>
-    </bk-form>
+    </lc-form>
 </template>
 
 <script>
     import { mapGetters } from 'vuex'
     import mixins from './form-item-mixins'
     import DynamicTag from '@/components/dynamic-tag.vue'
+    import HeaderParams from './children/header-params.vue'
     import QueryParams from './children/query-params.vue'
     import BodyParams from './children/body-params.vue'
     import Monaco from '@/components/monaco'
@@ -190,6 +231,7 @@
     export default {
         components: {
             DynamicTag,
+            HeaderParams,
             QueryParams,
             BodyParams,
             Monaco,
@@ -207,6 +249,14 @@
                 type: Array,
                 default: () => ([])
             },
+            functionList: {
+                type: Array,
+                default: () => ([])
+            },
+            apiList: {
+                type: Array,
+                default: () => ([])
+            },
             showToken: {
                 type: Boolean,
                 default: false
@@ -216,8 +266,8 @@
         data () {
             return {
                 tempList: [
-                    { id: FUNCTION_TYPE.EMPTY, name: '空白函数' },
-                    { id: FUNCTION_TYPE.REMOTE, name: '远程函数', info: '建议以下几种情况使用 "远程函数":<br>1、远程API需要携带用户登录态认证<br>2、远程API无法跨域或纯前端访问' }
+                    { id: FUNCTION_TYPE.EMPTY, name: this.$t('空白函数') },
+                    { id: FUNCTION_TYPE.REMOTE, name: this.$t('远程函数'), info: `${window.i18n.t('建议以下几种情况使用 "远程函数"')}:<br>1、${window.i18n.t('远程API需要携带用户登录态认证')}<br>2、${window.i18n.t('远程API无法跨域或纯前端访问')}` }
                 ],
                 isLoadingResponse: false,
                 METHODS_WITHOUT_DATA,
@@ -226,7 +276,9 @@
                     show: false,
                     code: ''
                 },
-                isLoadingUrl: false
+                isLoadingUrl: false,
+                nameOptions: [],
+                isLoadingOptions: false
             }
         },
 
@@ -248,6 +300,14 @@
                     this.updateUrl()
                 },
                 immediate: true
+            },
+            'form.apiChoosePath': {
+                handler (val, oldVal) {
+                    if (JSON.stringify(val) !== JSON.stringify(oldVal)) {
+                        this.getNameOptions()
+                    }
+                },
+                immediate: true
             }
         },
 
@@ -267,6 +327,57 @@
                     this.isLoadingUrl = false
                 }
                 this.form.funcApiUrl = funcApiUrl
+            },
+
+            getNameOptions () {
+                // 非数据源，不获取下拉数据
+                if (this.form?.apiChoosePath?.[0]?.id !== 'datasource-api') {
+                    this.nameOptions = []
+                    return
+                }
+                this.isLoadingOptions = true
+                const [, { name: tableName }, { name: apiType }] = this.form.apiChoosePath
+                this
+                    .$store
+                    .dispatch('dataSource/findOne', { tableName })
+                    .then((data) => {
+                        const columns = data.columns
+                        if (apiType.startsWith('get')) {
+                            this.nameOptions = [
+                                {
+                                    name: 'page',
+                                    comment: this.$t('query 参数，数字类型，表示分页的页码。不传表示获取所有数据')
+                                },
+                                {
+                                    name: 'pageSize',
+                                    comment: this.$t('query 参数，数字类型，表示每页数量。不传表示获取所有数据')
+                                },
+                                {
+                                    name: 'bkSortKey',
+                                    comment: this.$t('query 参数，排序字段的 key')
+                                },
+                                {
+                                    name: 'bkSortValue',
+                                    comment: this.$t('query 参数，排序方式，降序使用【DESC】，升序使用【ASC】')
+                                },
+                                ...columns
+                            ]
+                            return
+                        }
+                        if (apiType.startsWith('delete')) {
+                            this.nameOptions = [
+                                {
+                                    name: 'id'
+                                },
+                                ...columns.filter(column => column.unique)
+                            ]
+                            return
+                        }
+                        this.nameOptions = columns
+                    })
+                    .finally(() => {
+                        this.isLoadingOptions = false
+                    })
             },
 
             tagChange (key, val) {
@@ -297,32 +408,39 @@
             },
 
             getRemoteResponse () {
-                this
-                    .$refs
-                    .funcForm
-                    .validate()
+                this.validate()
                     .then(() => {
                         this.isLoadingResponse = true
                         let apiData = {}
                         if (METHODS_WITHOUT_DATA.includes(this.form.funcMethod)) {
                             this.form.apiQuery.forEach((queryItem) => {
-                                apiData[queryItem.name] = parseScheme2Value(queryItem, LCGetParamsVal(this.variableList))
+                                if (queryItem.name) {
+                                    apiData[queryItem.name] = parseScheme2Value(queryItem, LCGetParamsVal(this.variableList))
+                                }
                             })
                         } else {
                             apiData = parseScheme2Value(this.form.apiBody, LCGetParamsVal(this.variableList))
                         }
+                        // http header
+                        const header = this.form.apiHeader?.reduce?.((acc, cur) => {
+                            if (cur.name) {
+                                acc[cur.name] = parseScheme2Value(cur, LCGetParamsVal(this.variableList))
+                            }
+                            return acc
+                        }, {}) || {}
                         const url = replaceFuncParam(this.form.funcApiUrl, (variableCode) => {
                             const variable = this.variableList.find((variable) => (variable.variableCode === variableCode))
                             if (variable) {
                                 return getVariableValue(variable)
                             } else {
-                                throw new Error(`函数请求地址里引用的变量【${variableCode}】不存在，请检查并创建该变量`)
+                                throw new Error(this.$t('函数请求地址里引用的变量【{0}】不存在，请检查并创建该变量', [variableCode]))
                             }
                         })
                         const httpData = {
                             url,
                             type: this.form.funcMethod,
                             apiData,
+                            header,
                             withToken: this.form.withToken,
                             projectId: this.form.projectId
                         }
@@ -348,9 +466,18 @@
             getParamRule (label) {
                 return {
                     validator: (val) => (val.length <= 0 || val.every(x => /^[A-Za-z]+$/.test(x))),
-                    message: `${label}由大小写英文字母组成`,
+                    message: this.$t('{0}由大小写英文字母组成', [label]),
                     trigger: 'blur'
                 }
+            },
+
+            validate () {
+                return Promise.all([
+                    this.$refs.funcForm.validate(),
+                    this.$refs.headerParams?.validate?.(),
+                    this.$refs.queryParams?.validate?.(),
+                    this.$refs.bodyParams?.validate?.()
+                ])
             }
         }
     }
@@ -359,6 +486,9 @@
 <style lang="postcss" scoped>
     .func-detail {
         position: relative;
+        /deep/ .bk-checkbox-text {
+            font-size: 12px;
+        }
     }
     .func-temp {
         width: 140px;
@@ -370,12 +500,6 @@
         /deep/ .bk-radio-button-input:disabled+.bk-radio-button-text {
             border-left: 1px solid #dcdee5;
         }
-    }
-    .get-remote-response {
-        position: absolute;
-        left: 60px;
-        z-index: 2;
-        margin-top: 10px !important;
     }
     .add-api-link {
         /deep/ .bk-link-text {

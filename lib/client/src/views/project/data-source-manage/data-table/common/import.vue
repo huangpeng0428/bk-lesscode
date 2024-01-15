@@ -1,6 +1,6 @@
 <template>
     <section>
-        <bk-button class="import-button" @click="toggleShowDialog(true)">导入</bk-button>
+        <bk-button class="import-button" @click="toggleShowDialog(true)">{{ $t('导入') }}</bk-button>
 
         <bk-dialog
             theme="primary"
@@ -11,28 +11,41 @@
                 {{ title }}
                 <i
                     v-if="tips"
-                    v-bk-tooltips="{ content: tips }"
+                    v-bk-tooltips="{ content: tips, maxWidth: 400 }"
                     class="bk-icon icon-info"
                 ></i>
             </span>
+
+            <h5 class="import-title">{{$t('文件类型')}}</h5>
+            <bk-radio-group
+                v-model="fileType"
+                class="import-content"
+            >
+                <bk-radio-button :value="DATA_FILE_TYPE.XLSX">
+                    XLSX
+                </bk-radio-button>
+                <bk-radio-button :value="DATA_FILE_TYPE.SQL">
+                    SQL
+                </bk-radio-button>
+            </bk-radio-group>
+
+            <slot :file-type="fileType"></slot>
+
             <bk-upload
-                accept=".sql,.xlsx"
                 with-credentials
+                :accept="`.${fileType}`"
                 :limit="1"
                 :size="10"
                 :multiple="false"
                 :custom-request="handleRequest"
+                :key="uploadKey + fileType"
                 v-if="isShowImport"
             ></bk-upload>
 
             <span class="import-tip">
-                支持 XLSX，SQL 文件格式，
-                <bk-link theme="primary" @click="downloadTemplate('xlsx')">
-                    <i class="bk-drag-icon bk-drag-download"></i>XLSX 模板
-                </bk-link>
-                <bk-divider direction="vertical" class="tip-divider"></bk-divider>
-                <bk-link theme="primary" @click="downloadTemplate('sql')">
-                    <i class="bk-drag-icon bk-drag-download"></i>SQL 模板
+                {{ $t('支持 {0} 文件格式，', [fileType]) }}<slot name="tips" :file-type="fileType"></slot>
+                <bk-link theme="primary" @click="downloadTemplate(fileType)" style="min-width: 100px;">
+                    <i class="bk-drag-icon bk-drag-download"></i>{{ $t('{0} 模板', [fileType]) }}
                 </bk-link>
             </span>
 
@@ -48,23 +61,32 @@
                 <bk-button
                     theme="primary"
                     :loading="isLoadingData"
-                    @click="confirmImport">导入</bk-button>
+                    @click="confirmImport">{{ $t('导入') }}</bk-button>
                 <bk-button
                     :disabled="isLoadingData"
                     @click="toggleShowDialog(false)"
-                >取消</bk-button>
+                >{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </section>
 </template>
 
 <script lang="ts">
-    import { defineComponent, ref } from '@vue/composition-api'
+    import {
+        defineComponent,
+        ref,
+        watch
+    } from '@vue/composition-api'
+    import {
+        DATA_FILE_TYPE,
+    } from 'shared/data-source'
 
     export default defineComponent({
         props: {
             title: String,
             tips: String,
+            typeTips: String,
+            uploadKey: String,
             parseImport: Function,
             handleImport: Function
         },
@@ -75,6 +97,7 @@
             const resultMessage = ref('')
             const errorMessage = ref('')
             const parseData = ref([])
+            const fileType = ref(DATA_FILE_TYPE.XLSX)
 
             // 清空状态
             const clearStatus = () => {
@@ -99,10 +122,14 @@
 
                 // 每次导入需要清空上次导入的结果信息
                 clearStatus()
-    
+                // 检测文件类型
+                if (type !== fileType.value) {
+                    errorMessage.value = `上次的文件类型不是【${fileType.value}】，请重新上传`
+                    return
+                }
                 // 读取文件
                 const reader = new FileReader()
-                if (type === 'xlsx') {
+                if (type === DATA_FILE_TYPE.XLSX) {
                     reader.readAsBinaryString(fileList[0].origin)
                 } else {
                     reader.readAsText(fileList[0].origin, 'utf-8')
@@ -128,7 +155,7 @@
                 }
                 // 发生错误
                 reader.onerror = () => {
-                    fileObj.errorMsg = '上传文件失败'
+                    fileObj.errorMsg = window.i18n.t('上传文件失败')
                 }
                 // 执行完成
                 reader.onloadend = () => {
@@ -140,7 +167,7 @@
                 resultMessage.value = ''
                 isLoadingData.value = true
                 return props
-                    .handleImport(parseData.value)
+                    .handleImport(parseData.value, fileType.value)
                     .then(() => {
                         isShowImport.value = false
                         clearStatus()
@@ -157,11 +184,23 @@
                 emit('downloadTemplate', type)
             }
 
+            watch(
+                [
+                    () => props.uploadKey,
+                    () => fileType.value
+                ],
+                () => {
+                    clearStatus()
+                }
+            )
+
             return {
+                DATA_FILE_TYPE,
                 isShowImport,
                 isLoadingData,
                 resultMessage,
                 errorMessage,
+                fileType,
                 toggleShowDialog,
                 handleRequest,
                 confirmImport,
@@ -199,5 +238,20 @@
     .error-message {
         margin: 0 0 5px;
         color: #ff5656;
+    }
+    .import-title {
+        font-weight: normal;
+        font-size: 12px;
+        line-height: 20px;
+        margin: 0 0 6px;
+    }
+    .import-content {
+        margin-bottom: 20px;
+        .bk-form-radio-button {
+            width: 50%;
+        }
+        /deep/ .bk-radio-button-text {
+            width: 100%;
+        }
     }
 </style>

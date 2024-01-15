@@ -2,8 +2,8 @@
     <section>
         <bk-dialog v-model="isShow"
             render-directive="if"
-            title="存为模板"
-            width="600"
+            :title="$t('存为模板')"
+            :width="600"
             :mask-close="false"
             :auto-close="false"
             :close-icon="false"
@@ -12,22 +12,22 @@
             header-position="left"
             ext-cls="template-operate-dialog"
         >
-            <bk-form ref="pageTemplateFrom" class="dialog-form" :label-width="95" :rules="dialog.formRules" :model="dialog.formData">
-                <bk-form-item label="操作类型" property="templateName" style="margin-bottom: 20px">
+            <bk-form ref="pageTemplateFrom" class="dialog-form" form-type="vertical" :label-width="200" :rules="dialog.formRules" :model="dialog.formData">
+                <bk-form-item :label="$t('form_操作类型')" property="templateName" style="margin-bottom: 10px">
                     <bk-radio-group v-model="dialog.formData.saveType">
-                        <bk-radio value="new" style="margin-right: 20px">存为新模板</bk-radio>
-                        <bk-radio value="edit">更新覆盖已有模板</bk-radio>
+                        <bk-radio value="new" style="margin-right: 20px">{{ $t('存为新模板') }}</bk-radio>
+                        <bk-radio value="edit">{{ $t('更新覆盖已有模板') }}</bk-radio>
                     </bk-radio-group>
                 </bk-form-item>
                 <section v-if="dialog.formData.saveType === 'new'">
-                    <bk-form-item label="模板名称" required property="templateName" error-display-type="normal">
+                    <bk-form-item :label="$t('form_模板名称')" required property="templateName" error-display-type="normal">
                         <bk-input ref="nameInput"
                             maxlength="60"
                             v-model.trim="dialog.formData.templateName"
-                            placeholder="请输入模板名称，50个字符以内">
+                            :placeholder="$t('请输入模板名称，50个字符以内')">
                         </bk-input>
                     </bk-form-item>
-                    <bk-form-item label="模板分类" required property="categoryId" error-display-type="normal">
+                    <bk-form-item :label="$t('form_模板分类')" required property="categoryId" error-display-type="normal">
                         <bk-select
                             :clearable="false"
                             v-model="dialog.formData.categoryId"
@@ -38,7 +38,7 @@
                     </bk-form-item>
                 </section>
                 <section v-else>
-                    <bk-form-item label="待更新模板" required property="templateId" error-display-type="normal">
+                    <bk-form-item :label="$t('form_待更新模板')" required property="templateId" error-display-type="normal">
                         <bk-select
                             v-model="dialog.formData.templateId"
                             @toggle="toggleTemplateList"
@@ -53,8 +53,8 @@
                 <bk-button
                     theme="primary"
                     :loading="dialog.loading"
-                    @click="handleDialogConfirm">确定</bk-button>
-                <bk-button @click="closeDialog" :disabled="dialog.loading">取消</bk-button>
+                    @click="handleDialogConfirm">{{ $t('确定') }}</bk-button>
+                <bk-button @click="closeDialog" :disabled="dialog.loading">{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </section>
@@ -86,19 +86,19 @@
                         templateName: [
                             {
                                 required: true,
-                                message: '必填项',
+                                message: this.$t('必填项'),
                                 trigger: 'blur'
                             },
                             {
                                 max: 40,
-                                message: '名称不能超过40个字符',
+                                message: this.$t('名称不能超过40个字符'),
                                 trigger: 'blur'
                             }
                         ],
                         categoryId: [
                             {
                                 required: true,
-                                message: '必选项',
+                                message: this.$t('必选项'),
                                 trigger: 'blur'
                             }
                         ]
@@ -112,6 +112,7 @@
                 'pageDetail'
             ]),
             ...mapGetters('layout', ['pageLayout']),
+            ...mapGetters('project', ['projectDetail']),
             projectId () {
                 return this.$route.params.projectId
             }
@@ -120,9 +121,9 @@
             isShow (val) {
                 if (val) {
                     this.getTemplateCategory()
-                    setTimeout(() => {
-                        this.$refs.nameInput && this.$refs.nameInput.$el.querySelector('input').focus()
-                    }, 50)
+                    // setTimeout(() => {
+                    //     this.$refs.nameInput && this.$refs.nameInput.$el.querySelector('input').focus()
+                    // }, 50)
                 } else {
                     this.dialog.formData.saveType = 'new'
                     this.dialog.formData.templateName = ''
@@ -145,7 +146,7 @@
         methods: {
             async toggleTemplateList (val) {
                 if (val) {
-                    this.templateList = await this.$store.dispatch('pageTemplate/list', { projectId: this.projectId })
+                    this.templateList = await this.$store.dispatch('pageTemplate/list', { projectId: this.projectId, framework: this.projectDetail.framework })
                 }
             },
             async getTemplateCategory () {
@@ -163,7 +164,7 @@
                     if (!formData.templateId) {
                         this.$bkMessage({
                             theme: 'error',
-                            message: '请先选择要更新的模板'
+                            message: this.$t('请先选择要更新的模板')
                         })
                         return
                     }
@@ -172,9 +173,9 @@
                 }
                 
                 this.dialog.loading = true
-                const $rootElm = this.eventData.target.$elm
+                const elm = document.querySelector('.lesscode-editor-layout')
                 
-                html2canvas($rootElm).then(async (canvas) => {
+                html2canvas(elm).then(async (canvas) => {
                     try {
                         const imgData = canvas.toDataURL('image/png')
                         let data = {}
@@ -185,7 +186,8 @@
                             versionId: this.versionId,
                             fromPageCode: this.pageDetail && this.pageDetail.pageCode,
                             content: JSON.stringify(this.eventData.value),
-                            previewImg: imgData
+                            previewImg: imgData,
+                            framework: this.projectDetail.framework
                         }
                         
                         if (formData.saveType === 'edit') {
@@ -209,7 +211,7 @@
                             this.dialog.loading = false
                             this.$bkMessage({
                                 theme: 'success',
-                                message: '存为模板成功'
+                                message: this.$t('存为模板成功')
                             })
                             this.isShow = false
                             bus.$emit('update-template-list')
@@ -241,7 +243,10 @@
     .template-operate-dialog {
         /* z-index: 2100 !important; */
         .bk-dialog-body {
-            padding: 10px 15px 25px;
+            padding: 0 24px 24px;
+        }
+        .bk-dialog-header {
+            padding-bottom: 6px;
         }
     }
 </style>

@@ -11,7 +11,7 @@
 
 <template>
     <div v-if="hasMaterialConfig">
-        <template v-for="(item, key) in propsConfig">
+        <template v-for="(item, key) in filterPropsConfig">
             <render-prop
                 v-if="item.type !== 'hidden'"
                 :component-type="componentType"
@@ -20,7 +20,8 @@
                 :last-value="lastProps[key]"
                 :name="key"
                 :key="key"
-                :sync-slot="(val) => syncSlot(val, key)"
+                :sync-slot="syncSlot"
+                :last-data-origin="lastProps[item.dataOrigin]"
                 @on-change="handleChange" />
         </template>
     </div>
@@ -30,11 +31,40 @@
     import { bus } from '@/common/bus'
     import LC from '@/element-materials/core'
     import RenderProp from './components/render-prop'
+    import useDatasource from '@/hooks/use-datasource'
+    import { encodeRegexp } from '../../component/utils'
+    import { framework } from 'bk-lesscode-render'
+
+    // 属性类型转为该变量接受的值类型
+    const getPropValueType = (type) => {
+        const valueMap = {
+            'size': 'string',
+            'text': 'string',
+            'paragraph': 'string',
+            'html': 'string',
+            'json': 'object',
+            'icon': 'string',
+            'van-icon': 'string',
+            'float': 'number',
+            'src': 'string',
+            'srcset': 'array',
+            // 老数据存在 type = 'hidden' 但是值是 object 的情况
+            'hidden': 'object',
+            'pagination': 'object'
+        }
+        return valueMap[type] || type
+    }
 
     export default {
         name: 'modifier-prop',
         components: {
             RenderProp
+        },
+        props: {
+            keyword: {
+                type: String,
+                default: ''
+            }
         },
         data () {
             return {
@@ -45,12 +75,21 @@
         computed: {
             hasMaterialConfig () {
                 let count = 0
-                Object.keys(this.propsConfig).forEach(propName => {
-                    if (this.propsConfig[propName].type !== 'hidden') {
+                Object.keys(this.filterPropsConfig).forEach(propName => {
+                    if (this.filterPropsConfig[propName]?.type !== 'hidden') {
                         count++
                     }
                 })
                 return count > 0
+            },
+            filterPropsConfig () {
+                const reg = new RegExp(encodeRegexp(this.keyword), 'i')
+                return Object.keys(this.propsConfig).filter(propName => {
+                    return reg.test(propName + (typeof this.propsConfig[propName].type === 'string' ? `(${getPropValueType(this.propsConfig[propName].type)})` : ''))
+                }).reduce((result, key) => {
+                    result[key] = this.propsConfig[key]
+                    return result
+                }, {})
             }
         },
         created () {
@@ -115,52 +154,42 @@
                     })
                 }
             },
-            syncOtherProp (propName) {
-                if (['bk-charts', 'chart'].includes(this.componentNode.type)
-                    && ['options', 'remoteOptions'].includes(propName)) {
-                    // bk-charts, chart 组件的 remoteOptions 需要和 options 同步
-                    // remoteOptions 覆盖 options 的配置
-                    const propOfOptionsData = this.lastProps['options']
-                    const propOfRemoteOptionsData = this.lastProps['remoteOptions']
-
-                    console.log(this.lastProps['options'], this.lastProps['remoteOptions'], 'last')
-
-                    const realOptionValue = Object.assign(
-                        {},
-                        _.cloneDeep(propOfOptionsData.renderValue),
-                        _.cloneDeep(propOfRemoteOptionsData.renderValue)
-                    )
-
-                    console.log(realOptionValue, 'real')
-
-                    if (propOfOptionsData.format === 'value') {
-                        // format 为 value 替换所有配置
-                        this.componentNode.setProp('options', LC.utils.genPropFormatValue({
-                            ...propOfOptionsData,
-                            format: 'value',
-                            code: realOptionValue,
-                            renderValue: realOptionValue
-                        }))
-                    } else if (propOfOptionsData.format === 'variable') {
-                        // format 为 variable 类型只替换 renderValue
-                        this.componentNode.setProp('options', LC.utils.genPropFormatValue({
-                            ...propOfOptionsData,
-                            format: 'variable',
-                            renderValue: realOptionValue
-                        }))
-                    }
+            syncOtherProp (propName, propData) {
+                // 兼容组件报错
+                if (this.componentNode.type === 'bk-date-picker' && propName === 'type') {
+                    const propKey = framework === 'vue2' ? 'value' : 'model-value'
+                    const valuePropData = this.lastProps[propKey]
+                    const value = ['datetimerange', 'daterange'].includes(propData.renderValue) ? [] : ''
+                    this.componentNode.setProp(propKey, LC.utils.genPropFormatValue({
+                        ...valuePropData,
+                        format: 'value',
+                        code: value,
+                        renderValue: value
+                    }))
+                }
+                // 兼容组件报错
+                if (this.componentNode.type === 'bk-time-picker' && propName === 'type') {
+                    const propKey = framework === 'vue2' ? 'value' : 'model-value'
+                    const valuePropData = this.lastProps[propKey]
+                    const value = ['timerange'].includes(propData.renderValue) ? [] : ''
+                    this.componentNode.setProp(propKey, LC.utils.genPropFormatValue({
+                        ...valuePropData,
+                        format: 'value',
+                        code: value,
+                        renderValue: value
+                    }))
                 }
             },
             /**
              * 通过 table 的 data 推导出 table 列的配置
              */
-            syncSlot (propData, key) {
+            async syncSlot (key) {
                 const {
                     format,
                     payload,
                     renderValue = [],
                     valueType
-                } = propData
+                } = this.componentNode.renderProps[key]
 
                 // 需要同步 prop 配置到 slot 的场景
                 // 同时满足下面的条件
@@ -181,13 +210,15 @@
                     // 默认同步 第一个 slot
                     const slotName = Object.keys(this.material.slots)[0]
                     const slotConfig = this.material.slots[slotName]
-                    // 通过数据表配置的 columns
-                    const dataSourceColumns = payload.sourceData?.columns || []
                     // 通过值类型计算的 columns
                     const firstValue = renderValue[0] || {}
-                    const valueColumns = Object.keys(firstValue)
-                    // 基于类型设置表头信息
-                    const columns = valueType === 'table-data-source' ? dataSourceColumns : valueColumns
+                    let columns = Object.keys(firstValue)
+                    // 通过接口获取 columns
+                    if (valueType === 'table-data-source') {
+                        const { getTable } = useDatasource()
+                        const table = await getTable(this.$route.params.projectId, payload.sourceData?.tableName, payload.sourceData?.dataSourceType)
+                        columns = table?.columns?.map(column => column.name) || []
+                    }
                     // 获取自定义column配置，这个配置比较复杂不覆盖
                     const renderSlot = this.componentNode.renderSlots[slotName]
                     const slotRenderValue = renderSlot.renderValue || []
@@ -226,7 +257,7 @@
                     ...this.lastProps,
                     [propName]: propData
                 })
-
+                
                 /** 兼容bkcharts的精细化配置升级，去除了remoteOptions，当修改了options，将remoteOptions置空 */
                 const updateBkChartsRemoteOptions = (this.componentNode.type === 'bk-charts' && propName === 'options') ? {
                     remoteOptions: LC.utils.genPropFormatValue({
@@ -242,7 +273,7 @@
                     [propName]: propData,
                     ...updateBkChartsRemoteOptions
                 })
-                // this.syncOtherProp(propName)
+                this.syncOtherProp(propName, propData)
             }, 60)
         }
     }

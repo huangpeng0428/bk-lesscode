@@ -8,45 +8,44 @@
             :header-cell-style="{ background: '#f0f1f5' }"
         >
             <bk-table-column
-                show-overflow-tooltip
-                label="请求地址"
+                :label="$t('table_请求地址')"
                 prop="url"
             >
                 <template slot-scope="props">
-                    <span class="api-url">{{ props.row.url }}</span>
+                    <span class="api-url" v-bk-overflow-tips>{{ props.row.url }}</span>
                     <copy-icon :value="props.row.url"></copy-icon>
                 </template>
             </bk-table-column>
             <bk-table-column
-                label="请求方法"
+                :label="$t('table_请求方法')"
             >
                 <template slot-scope="props">
                     <span :class="[props.row.type, 'api-type']">{{ firstUpperCase(props.row.type) }}</span>
                 </template>
             </bk-table-column>
             <bk-table-column
-                label="请求参数"
+                :label="$t('table_请求参数')"
                 prop="params"
             >
                 <template slot-scope="props">
-                    <bk-button text @click="showDetail('查看请求参数', props.row.params)">查看请求参数</bk-button>
+                    <bk-button text @click="showDetail($t('查看请求参数'), props.row.params)">{{ $t('查看请求参数') }}</bk-button>
                 </template>
             </bk-table-column>
             <bk-table-column
-                label="返回数据"
+                :label="$t('table_返回数据')"
                 prop="result"
             >
                 <template slot-scope="props">
-                    <bk-button text @click="showDetail('查看返回数据', props.row.result)">查看返回数据</bk-button>
+                    <bk-button text @click="showDetail($t('查看返回数据'), props.row.result)">{{ $t('查看返回数据') }}</bk-button>
                 </template>
             </bk-table-column>
             <bk-table-column
                 show-overflow-tooltip
-                label="描述"
+                :label="$t('描述')"
                 prop="summary"
             ></bk-table-column>
         </bk-table>
-        <span class="function-tips">注：可以将请求地址复制到函数中使用，具体使用方式可以参考函数示例</span>
+        <span class="function-tips">{{ $t('注：可以将请求地址复制到函数中使用，具体使用方式可以参考函数示例') }}</span>
 
         <bk-dialog
             v-model="isShowDetail"
@@ -85,69 +84,101 @@
 
     // 默认提供的函数
     const getDataApiList = (tableName, columns) => {
-        const url = `/data-source/user/tableName/${tableName}`
+        const url = `/api/data-source/user/tableName/${tableName}`
         const dataObject = columns.reduce((acc, cur) => {
-            acc[cur.name] = `${cur.name}的值`
+            acc[cur.name] = window.i18n.t('{0}的值', [cur.name])
             return acc
         }, {})
         const dataWithOutId = columns.reduce((acc, cur) => {
             if (cur.name !== 'id') {
-                acc[cur.name] = `${cur.name}的值`
+                acc[cur.name] = window.i18n.t('{0}的值', [cur.name])
             }
             return acc
         }, {})
         return [
             {
+                url: url + '/detail',
+                type: FUNCTION_METHOD.GET,
+                params: {
+                    '[key]': window.i18n.t('query 参数，可以填写多个键值对，并使用 AND 关系查询具体的数据，如果匹配到多条数据，则返回第一条。key 可以填写任意字段。value 填写值，可以用 %xx% 的形式进行模糊匹配。示例：\'name\': \'xxx\' 或者 \'name\': \'%xxx%\'')
+                },
+                result: {
+                    code: window.i18n.t('状态码,-1表示接口异常'),
+                    data: dataObject,
+                    message: window.i18n.t('接口返回的消息')
+                },
+                summary: window.i18n.t('获取 {0} 表的某一条数据', [tableName])
+            },
+            {
+                url: url + '/update/condition',
+                type: FUNCTION_METHOD.PUT,
+                params: {
+                    data: dataObject,
+                    where: {
+                        '[key]': '可以填写多个键值对，并使用 AND 关系查询匹配到的数据。key 可以填写任意字段。value 填写值，可以用 %xx% 的形式进行模糊匹配。示例：\'name\': \'xxx\' 或者 \'name\': \'%xxx%\''
+                    }
+                },
+                result: {
+                    code: window.i18n.t('状态码,-1表示接口异常'),
+                    data: window.i18n.t('数字类型，返回更新操作影响的行数'),
+                    message: window.i18n.t('接口返回的消息')
+                },
+                summary: window.i18n.t('使用 where 条件更新 {0} 表的数据。注意：匹配到 where 条件的数据都会执行更新', [tableName])
+            },
+            {
                 url,
                 type: FUNCTION_METHOD.GET,
                 params: {
-                    page: 'query 参数，数字类型，表示分页的页码。不传表示获取所有数据',
-                    pageSize: 'query 参数，数字类型，表示每页数量。不传表示获取所有数据'
+                    page: window.i18n.t('query 参数，数字类型，表示分页的页码。不传表示获取所有数据'),
+                    pageSize: window.i18n.t('query 参数，数字类型，表示每页数量。不传表示获取所有数据'),
+                    bkSortKey: window.i18n.t('query 参数，排序字段的 key'),
+                    bkSortValue: window.i18n.t('query 参数，排序方式，降序使用【DESC】，升序使用【ASC】'),
+                    '[key]': window.i18n.t('query 参数，可以填写多个键值对，并使用 AND 关系进行模糊匹配。key 可以填写任意字段。value 填写值，示例：\'name\': \'xxx\'')
                 },
                 result: {
-                    code: '状态码,-1表示接口异常',
+                    code: window.i18n.t('状态码,-1表示接口异常'),
                     data: {
                         list: [dataObject],
-                        count: '数字类型，数量'
+                        count: window.i18n.t('数字类型，数量')
                     },
-                    message: '接口返回的消息'
+                    message: window.i18n.t('接口返回的消息')
                 },
-                summary: `分页获取 ${tableName} 表的数据,返回该页数据和数据总数目`
+                summary: window.i18n.t('分页获取 {0} 表的数据,返回该页数据和数据总数目', [tableName])
             },
             {
                 url,
                 type: FUNCTION_METHOD.POST,
                 params: dataWithOutId,
                 result: {
-                    code: '状态码,-1表示接口异常',
+                    code: window.i18n.t('状态码,-1表示接口异常'),
                     data: dataObject,
-                    message: '接口返回的消息'
+                    message: window.i18n.t('接口返回的消息')
                 },
-                summary: `新增 ${tableName} 表的数据。注意：非空字段必填`
+                summary: window.i18n.t('新增 {0} 表的数据。注意：非空字段必填', [tableName])
             },
             {
                 url,
                 type: FUNCTION_METHOD.PUT,
                 params: dataObject,
                 result: {
-                    code: '状态码,-1表示接口异常',
-                    data: '数字类型，返回更新操作影响的行数',
-                    message: '接口返回的消息'
+                    code: window.i18n.t('状态码,-1表示接口异常'),
+                    data: window.i18n.t('数字类型，返回更新操作影响的行数'),
+                    message: window.i18n.t('接口返回的消息')
                 },
-                summary: `更新 ${tableName} 表的数据。注意：传入的数据一定要包含 id 字段`
+                summary: window.i18n.t('更新 {0} 表的数据。注意：传入的数据一定要包含 id 字段', [tableName])
             },
             {
                 url,
                 type: FUNCTION_METHOD.DELETE,
                 params: {
-                    id: 'query 参数，表示删除数据的 id 字段'
+                    '[key]': window.i18n.t('query 参数，传入 id 或者 unqiue 字段来唯一定位到要删除的数据')
                 },
                 result: {
-                    code: '状态码,-1表示接口异常',
-                    data: '数字类型，返回删除操作影响的行数',
-                    message: '接口返回的消息'
+                    code: window.i18n.t('状态码,-1表示接口异常'),
+                    data: window.i18n.t('数字类型，返回删除操作影响的行数'),
+                    message: window.i18n.t('接口返回的消息')
                 },
-                summary: `删除 ${tableName} 表的数据`
+                summary: window.i18n.t('删除 {0} 表的数据', [tableName])
             }
         ]
     }

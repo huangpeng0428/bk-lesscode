@@ -1,27 +1,26 @@
 <template>
     <section style="margin: 0 auto">
-        <section v-if="createFromTemplate" class="template-container-page" v-bkloading="{ isLoading: pageLoading, opacity: 1 }">
-            <div class="layout-left">
-                <div class="filter-div">
-                    <ul class="filter-links">
-                        <li
-                            v-for="link in filterLinks"
-                            :key="link.id"
-                            :class="['link-item', { 'active': filter === link.id }]"
-                            @click="handleClickFilter(link.id)">
-                            {{link.name}}
-                        </li>
-                    </ul>
-                    <bk-input
-                        clearable
-                        :placeholder="'请输入模板名称'"
-                        :right-icon="'bk-icon icon-search'"
-                        :ext-cls="'search-input'"
-                        v-model="searchFilter"
-                        @enter="changeList"
-                        @clear="changeList">
+        <section v-if="createFromTemplate" class="template-container-page"
+            v-bkloading="{ isLoading: pageLoading, opacity: 1 }">
+            <div class="layout-page-info">
+                <slot />
+            </div>
+            <div class="layout-template">
+                <div class="template-header">
+                    <span class="title-style">
+                        {{ $t('页面模板') }}
+                    </span>
+                    <bk-input clearable :placeholder="$t('请输入模板名称')" :right-icon="'bk-icon icon-search'"
+                        :ext-cls="'search-input'" v-model="searchFilter" @enter="changeList" @clear="changeList">
                     </bk-input>
                 </div>
+                <ul class="filter-links">
+                    <li v-for="link in filterLinks" :key="link.id"
+                        :class="['link-item', { 'active': filter === link.id }]" v-enStyle="'overflow:visible'"
+                        @click="handleClickFilter(link.id)" :title="link.name">
+                        {{link.name}}
+                    </li>
+                </ul>
                 <div class="template-container">
                     <div class="template-container-wrapper" v-show="!pageLoading">
                         <div class="page-template-list" v-show="!pageLoading">
@@ -33,39 +32,39 @@
                                         <i class="bk-icon icon-check-1 checked-icon"></i>
                                     </div>
                                     <div class="layout-img">
-                                        <img :src="getPreviewImg(template.previewImg)" alt="模板缩略预览">
+                                        <img :src="getPreviewImg(template.previewImg)" :alt="$t('模板缩略预览')">
                                         <div v-if="template.isOffcial && template.hasInstall === false" class="mask">
-                                            <bk-button class="apply-btn" theme="primary" @click.stop="handleApply(template)">添加到本应用</bk-button>
+                                            <bk-button class="apply-btn" v-enClass="'en-apply-btn'" theme="primary"
+                                                @click.stop="handleApply(template)">{{ $t('添加到本应用') }}</bk-button>
                                         </div>
                                     </div>
                                 </section>
                                 <div class="layout-name">
-                                    <span class="template-name" :title="template.templateName">{{ template.templateName }}</span>
-                                    <span class="template-preview" @click.stop.prevent="handlePreview(template)">预览</span>
+                                    <span class="template-name" :title="template.templateName">{{ template.templateName
+                                        }}</span>
+                                    <span class="template-preview" @click.stop.prevent="handlePreview(template)">{{
+                                        $t('预览') }}</span>
                                 </div>
-                                <span v-if="template.isOffcial" class="default-share-tag">共享</span>
+                                <span v-if="template.isOffcial" class="default-share-tag">{{ $t('共享') }}</span>
                             </li>
                         </div>
                         <div class="empty" v-show="!list.length">
-                            <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part">
-                                <div>暂无模板</div>
-                            </bk-exception>
+                            <empty-status :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="layout-right">
-                <slot />
-            </div>
         </section>
-    
+
         <template v-else>
-            <div class="from-empty-template" :style="{ 'min-height': nocodeType ? '420px' : '', height: nocodeType ? '' : '490px' }">
+            <div class="from-empty-template"
+                :style="{ 'min-height': nocodeType ? '420px' : '', height: nocodeType ? '' : '490px' }">
                 <slot />
             </div>
-            
+
         </template>
-        <template-edit-dialog ref="templateApplyDialog" action-type="apply" :refresh-list="applySuccess"></template-edit-dialog>
+        <template-edit-dialog ref="templateApplyDialog" action-type="apply"
+            :refresh-list="applySuccess"></template-edit-dialog>
     </section>
 </template>
 
@@ -74,7 +73,7 @@
     import PreivewErrImg from '@/images/preview-error.png'
     import { PAGE_TEMPLATE_TYPE } from '@/common/constant'
     import TemplateEditDialog from '@/views/project/template-manage/components/template-edit-dialog'
-    
+
     export default {
         name: 'page-from-template',
         components: {
@@ -100,43 +99,43 @@
         },
         data () {
             return {
-                filterLinks: [{ id: '', name: '全部' }],
+                filterLinks: [{ id: '', name: this.$t('全部') }],
                 filter: '',
                 searchFilter: '',
                 templateList: [],
                 list: [],
                 pageLoading: false,
                 currentTemplate: {},
-                selectApplyTemplate: {}
+                selectApplyTemplate: {},
+                emptyType: 'noData'
             }
         },
         computed: {
             ...mapGetters('projectVersion', { versionId: 'currentVersionId' }),
+            ...mapGetters('project', ['projectDetail']),
             projectId () {
                 return this.$route.params.projectId
             }
         },
         watch: {
-            createFromTemplate (val) {
-                if (val) {
-                    this.initData()
-                }
-            },
             searchFilter (val) {
                 if (!val) {
                     this.changeList()
                 }
             }
         },
+        created () {
+            this.initData()
+        },
         methods: {
             async initData () {
                 try {
                     this.pageLoading = true
-                    this.filterLinks = [{ id: '', name: '全部' }]
+                    this.filterLinks = [{ id: '', name: this.$t('全部') }]
                     const [projectTemplateGroups, projectTemplateList, tmpMarketTemplateList] = await Promise.all([
                         this.$store.dispatch('pageTemplate/categoryList', { projectId: this.projectId }),
-                        this.$store.dispatch('pageTemplate/list', { projectId: this.projectId }),
-                        this.$store.dispatch('pageTemplate/list', { type: 'OFFCIAL' })
+                        this.$store.dispatch('pageTemplate/list', { projectId: this.projectId, framework: this.projectDetail.framework }),
+                        this.$store.dispatch('pageTemplate/list', { type: 'OFFCIAL', framework: this.projectDetail.framework })
                     ])
                     this.templateList = projectTemplateList
                     const marketTemplateList = tmpMarketTemplateList.map(item => ({
@@ -171,7 +170,10 @@
                     this.filterList = this.filterList.filter(item => item.offcialType === this.filter || item.categoryId === parseInt(this.filter))
                 }
                 if (this.searchFilter) {
+                    this.emptyType = 'search'
                     this.filterList = this.filterList.filter(item => item.templateName.toUpperCase().includes(this.searchFilter.toUpperCase()))
+                } else {
+                    this.emptyType = 'noData'
                 }
                 this.list = this.filterList.filter(item => item.templateType === this.platform || (this.platform === 'PC' && !item.templateType))
                 this.handleReSelect()
@@ -215,11 +217,11 @@
                 if (!template.content) {
                     this.$bkMessage({
                         theme: 'error',
-                        message: '该页面为空页面，请先编辑页面'
+                        message: this.$t('该页面为空页面，请先编辑页面')
                     })
                     return
                 }
-                window.open(`/preview-template/project/${template.belongProjectId}/${template.id}`, '_blank')
+                window.open(`/preview-template/project/${template.belongProjectId}/${template.id}?framework=${this.projectDetail.framework}`, '_blank')
             },
             handleApply (template) {
                 this.selectApplyTemplate = Object.assign({}, template)
@@ -243,6 +245,9 @@
                     this.handleReSelect()
                 }
                 this.selectApplyTemplate = {}
+            },
+            handlerClearSearch (searchName) {
+                this.searchFilter = searchName
             }
         }
     }
@@ -254,43 +259,45 @@
 
     .from-empty-template {
         width: 700px;
-        margin-bottom: 20px;
+        margin: 18px 0;
         overflow-y: auto;
         @mixin scroller;
     }
 
     .template-container-page {
         display: flex;
-        height: 510px;
+        height: calc(80vh - 49px);
         border-top: 1px solid #dcdee5;
-        .layout-left {
+
+        .layout-template {
             width: 681px;
             height: 100%;
             opacity: 1;
             background: #ffffff;
-            padding-bottom: 20px;
+            padding: 16px 24px 20px 16px;
 
-            .filter-div {
+            .template-header {
                 display: flex;
-                align-content: space-between;
-                margin-top: 10px;
-                height: 32px;
+                justify-content: space-between;
+
+                .search-input {
+                    width: 300px;
+                }
+
+                .title-style {
+                    color: #313238;
+                    font-size: 20px;
+                }
             }
-            .search-input {
-                width: 178px;
-            }
+
             .filter-links {
                 display: flex;
                 align-items: center;
-                width: 480px;
-                padding-left: 6px;
-                overflow-x: auto;
-                overflow-y: hidden;
-                @mixin scroller;
+                margin-top: 24px;
 
                 .link-item {
-                    padding: 6px 12px;
-                    margin: 0 8px;
+                    padding: 4px 10px;
+                    margin-right: 10px;
                     border-radius: 16px;
                     cursor: pointer;
 
@@ -303,20 +310,29 @@
                         color: #3A84FF;
                     }
                 }
+
+                .en-link-item {
+                    overflow: visible !important;
+
+                    &.active {
+                        background: #E1ECFF;
+                        color: #3A84FF;
+                    }
+                }
             }
 
-            .template-container{
+            .template-container {
                 width: 100%;
                 height: calc(100% - 72px);
-                margin: 14px 0 0 18px;
+                margin-top: 14px;
 
-                .template-container-wrapper{
-                    width: calc(100% - 20px);
+                .template-container-wrapper {
+                    /* width: calc(100% - 20px); */
                     height: 100%;
                     overflow-y: auto;
-                    @mixin scroller;
+                    @mixin scroller #dcdee5, 2px;
 
-                    .empty{
+                    .empty {
                         margin-top: 100px;
                     }
                 }
@@ -361,7 +377,8 @@
                         .checkbox {
                             display: block;
                         }
-                        .layout-name .template-preview{
+
+                        .layout-name .template-preview {
                             display: none;
                         }
                     }
@@ -400,6 +417,7 @@
 
                         img {
                             width: 100%;
+                            height: 100%;
                             object-fit: contain;
                         }
 
@@ -415,6 +433,9 @@
                             .apply-btn {
                                 display: none;
                                 margin-left: 42px;
+                            }
+                            .en-apply-btn {
+                                margin-left: 18px;
                             }
                         }
 
@@ -438,7 +459,7 @@
                         height: 32px;
                         width: 100%;
 
-                        .template-name{
+                        .template-name {
                             color: #63656e;
                             @mixin ellipsis 80%, block;
                         }
@@ -466,16 +487,15 @@
             }
         }
 
-        .layout-right {
+        .layout-page-info {
             width: 399px;
             height: 100%;
             opacity: 1;
             background: #ffffff;
-            border-left: 1px solid #dcdee5;
-            padding: 20px;
-            overflow-y: auto;
-            @mixin scroller;
+            border-right: 1px solid #dcdee5;
+            padding: 18px 0 20px 24px;
             
+
             .bk-form-control.control-prepend-group {
                 background: #fff;
                 .group-text {

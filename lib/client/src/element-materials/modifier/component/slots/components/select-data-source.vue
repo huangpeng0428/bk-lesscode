@@ -2,7 +2,7 @@
     <section>
         <div
             class="g-prop-sub-title g-mt8 g-mb6"
-        >数据表</div>
+        >{{ $t('数据表') }}</div>
         <choose-data-table
             class="g-mb8"
             :value="sourceData.tableName"
@@ -69,9 +69,6 @@
             })
 
             const chooseTable = ({ tableName, table, dataSourceType }) => {
-                // 更新 options
-                const columns = table?.columns.map(column => column.name)
-                updateOptions(columns)
                 // 更新值
                 sourceData.value.val = []
                 sourceData.value.tableName = tableName
@@ -103,10 +100,6 @@
                     }
                 }
                 change.value(slot, type)
-            }
-
-            const updateOptions = (columns) => {
-                emit('option-change', columns)
             }
 
             return {

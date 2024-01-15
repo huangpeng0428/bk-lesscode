@@ -2,11 +2,12 @@
     <!--    <div>form-setting</div>-->
     <div :class="['config-panel',{ 'config-empty': !Object.keys(configData).length }]">
         <div v-if="Object.keys(configData).length" class="field-setting">
-            <div class="panel-title">{{ fieldType[configData.type] || '组件名称'}}</div>
+            <div class="panel-title">{{ fieldType[configData.type] || $t('组件名称')}}</div>
             <div class="config-wrapper">
                 <field-edit
                     v-if="field.type"
                     v-model="configData"
+                    :is-from-flow="isFromFlow"
                     :list="list"
                     :disabled="disabled"
                     @change="$emit('update', $event)">
@@ -14,14 +15,13 @@
             </div>
         </div>
         <div class="empty-field" v-else>
-            请从左侧拖入组件或者选中组件
-        </div>
+            {{ $t('请从左侧拖入组件或者选中组件') }} </div>
     </div>
 </template>
 
 <script>
     import cloneDeep from 'lodash.clonedeep'
-    import { FIELDS_TYPES_MAPS } from '@/components/flow-form-comp/form/constants/forms'
+    import { FIELDS_TYPES_MAPS } from '../../../common/form'
     import fieldEdit from '../form-edit/fieldEdit.vue'
     export default {
         name: 'FormSetting',
@@ -29,6 +29,7 @@
             fieldEdit
         },
         props: {
+            isFromFlow: Boolean,
             disabled: Boolean,
             field: {
                 type: Object,

@@ -10,6 +10,7 @@
 -->
 
 <template>
+    <!-- 表单页面和表单管理页面 -->
     <main
         class="lessocde-editor-page"
         v-bkloading="{
@@ -20,14 +21,16 @@
             <div
                 id="toolActionBox"
                 class="function-and-tool">
-                <operation-select v-model="operationType" :hide-json="['FORM_MANAGE', 'FLOW_MANAGE', 'MARKDOWN'].includes(nocodeType)" :hide-func="nocodeType === 'MARKDOWN'" />
                 <!-- 保存、预览、快捷键等tool单独抽离 -->
-                <action-tool :hide-clear="['FORM_MANAGE', 'FLOW_MANAGE', 'MARKDOWN'].includes(nocodeType)" :hide-func="nocodeType === 'MARKDOWN'" />
+                <action-tool :hide-clear="['FORM_MANAGE', 'FLOW_MANAGE', 'MARKDOWN'].includes(nocodeType)" :hide-json="['FORM_MANAGE', 'FLOW_MANAGE', 'MARKDOWN'].includes(nocodeType)" />
             </div>
-            <div class="actions-links-area">
+            <div style="display: flex;align-items: center">
+                <page-operate />
+            </div>
+            <!-- <div class="actions-links-area">
                 <more-actions></more-actions>
                 <extra-links :show-help-box="false" />
-            </div>
+            </div> -->
         </div>
         <div class="lesscode-editor-page-content" ref="root" v-if="!isContentLoading">
             <operation-area :operation="operationType" :nocode-type="nocodeType" />
@@ -36,24 +39,21 @@
 </template>
 <script>
     import LC from '@/element-materials/core'
+    import { bus } from '@/common/bus'
     import { mapGetters } from 'vuex'
-    import ExtraLinks from '@/components/ui/extra-links'
     import PageList from '../index/components/page-list'
-    import OperationSelect from './components/operation-select'
+    import PageOperate from './components/header-operate'
     import ActionTool from './components/action-tool'
     import OperationArea from './components/operation-area'
-    import MoreActions from './components/more-actions/index'
     import PreviewMixin from './preview-mixin'
 
     export default {
         name: 'NocodePage',
         components: {
             PageList,
-            ExtraLinks,
-            OperationSelect,
+            PageOperate,
             ActionTool,
-            OperationArea,
-            MoreActions
+            OperationArea
         },
         mixins: [PreviewMixin],
         data () {
@@ -93,10 +93,14 @@
         },
         beforeRouteLeave (to, from, next) {
             this.$bkInfo({
-                title: '确认离开?',
-                subTitle: '您将离开画布编辑页面，请确认相应修改已保存',
+                title: window.i18n.t('确认离开'),
+                okText: window.i18n.t('离开'),
+                subTitle: window.i18n.t('您将离开画布编辑页面，请确认相应修改已保存'),
                 confirmFn: async () => {
                     next()
+                },
+                cancelFn: () => {
+                    bus.$emit('set-munu-active')
                 }
             })
         },
@@ -131,14 +135,12 @@
                             versionId: this.versionId
                         })
                     ])
-
                     await this.$store.dispatch('variable/getAllVariable', {
                         projectId: this.projectId,
                         pageCode: pageDetail.pageCode,
                         versionId: this.versionId,
                         effectiveRange: 0
                     })
-
                     this.$store.commit('page/setPageDetail', pageDetail || {})
                     this.$store.commit('page/setPageList', pageList || [])
                     this.$store.commit('project/setCurrentProject', projectDetail || {})
@@ -172,9 +174,8 @@
     $pageHeaderHeight: 52px;
 
     .lessocde-editor-page {
-        min-width: 1366px;
+        min-width: 1220px;
         height: calc(100vh - $headerHeight);
-        margin-top: $headerHeight;
     }
     .lesscode-editor-page-header {
         position: relative;

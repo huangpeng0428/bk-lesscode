@@ -10,51 +10,55 @@
 -->
 
 <template>
-    <div class="material-modifier" :style="{ '--width': tabLabelItemWidth }">
+    <div class="material-modifier">
         <template v-if="renderKey">
-            <bk-tab
-                :active="tabPanelActive"
-                type="unborder-card"
-                class="king-tab"
-                @tab-change="handleModifier">
-                <bk-tab-panel
-                    v-for="(tabPanel, panelIndex) in tabPanels"
-                    v-bind="tabPanel"
-                    :key="panelIndex" />
-            </bk-tab>
+            <div class="modifier-tab-container">
+                <select-tab
+                    :tab-list="tabPanels"
+                    :active-item="tabPanelActive"
+                    :item-change="handleModifier">
+                </select-tab>
+            </div>
+            <div class="props-search" v-if="tabPanelActive === 'props' && !isModifierEmpty">
+                <bk-input
+                    ext-cls="props-search-input"
+                    right-icon="bk-icon icon-search"
+                    :placeholder="$t('请输入属性名称')"
+                    v-model="keyword"
+                    :clearable="true" />
+            </div>
+            <empty-status type="search" v-if="tabPanelActive === 'props' && isSearchEmpty && keyword" @clearSearch="handlerClear"></empty-status>
             <div
                 ref="container"
                 class="material-modifier-container">
-                <div
-                    v-if="tabPanelActive === 'styles'"
-                    class="style-setting-tips">
-                    样式面板中设置的样式将覆盖组件自带的默认样式，请谨慎调整
-                </div>
                 <template v-for="(com, index) in modifierComList">
                     <component
                         :is="com"
-                        :key="`${renderKey}_${index}`" />
+                        :key="`${renderKey}_${index}`"
+                        :keyword="keyword" />
                 </template>
                 <div
                     v-if="isModifierEmpty"
                     class="empty">
-                    配置项为空
-                </div>
+                    {{ $t('配置项为空') }} </div>
             </div>
         </template>
         <div
             v-else
             class="empty">
-            <span>请选择组件</span>
+            <span>{{ $t('请选择组件') }}</span>
         </div>
     </div>
 </template>
 <script>
     import LC from '@/element-materials/core'
+    import SelectTab from '@/components/ui/select-tab'
     import ModifierStyles from './styles'
     import ModifierSlots from './slots'
     import ModifierGird from './gird'
     import ModifierForm from './form'
+    import ModifierFormContainer from './form-container'
+    import ModifierDataManageContainer from './data-manage-container'
     import ModifierTab from './tab'
     import ModifierProps from './props'
     import ModifierEvents from './events'
@@ -62,23 +66,28 @@
     import ModifierAlign from './align'
     import H5Page from './h5-page'
     import ModifierPerms from './perms'
-
+    import emptyStatus from '@/components/project/empty-status.vue'
     export default {
-        name: '',
+        id: '',
+        components: {
+            SelectTab,
+            emptyStatus
+        },
         inheritAttrs: false,
         data () {
             return {
                 tabPanels: [
-                    { name: 'styles', label: '样式', count: 40 },
-                    { name: 'props', label: '属性', count: 30 },
-                    { name: 'events', label: '事件', count: 20 },
-                    { name: 'directives', label: '指令', count: 10 }
+                    { id: 'styles', name: this.$t('样式-styles') },
+                    { id: 'props', name: this.$t('属性-props') },
+                    { id: 'events', name: this.$t('事件-events') },
+                    { id: 'directives', name: this.$t('指令-directives') }
                 ],
                 tabPanelActive: 'props',
                 currentTabPanelType: 'unborder-card',
                 renderKey: '',
                 isModifierEmpty: false,
-                tabLabelItemWidth: '25%'
+                keyword: '',
+                isSearchEmpty: false
             }
         },
         computed: {
@@ -86,7 +95,7 @@
                 // 当前属性面板的编辑组件
                 const comMap = {
                     styles: [ModifierAlign, ModifierStyles],
-                    props: [ModifierGird, H5Page, ModifierForm, ModifierTab, ModifierSlots, ModifierProps],
+                    props: [ModifierGird, H5Page, ModifierForm, ModifierFormContainer, ModifierDataManageContainer, ModifierTab, ModifierSlots, ModifierProps],
                     events: [ModifierEvents],
                     directives: [ModifierDirectives],
                     perms: [ModifierPerms]
@@ -94,32 +103,41 @@
                 return comMap[this.tabPanelActive]
             }
         },
-
+        watch: {
+            keyword: {
+                handler (val) {
+                    setTimeout(() => {
+                        if (this.$refs.container) {
+                            this.isSearchEmpty = this.$refs.container.children.length < 1
+                        }
+                    })
+                }
+            }
+        },
         created () {
             this.activeComponentNode = null
+           
             const activeCallback = ({ target }) => {
                 this.tabPanelActive = target.tabPanelActive || 'props'
                 this.renderKey = target.renderKey
                 this.activeComponentNode = target
                 this.checkChildrenComponentInstance()
-
+                this.keyword = ''
                 // 目前只有 button 按钮有权限面板
                 if (target.type === 'bk-button') {
-                    this.tabLabelItemWidth = '20%'
                     this.tabPanels.splice(0, this.tabPanels.length, ...[
-                        { name: 'styles', label: '样式', count: 40 },
-                        { name: 'props', label: '属性', count: 30 },
-                        { name: 'events', label: '事件', count: 20 },
-                        { name: 'directives', label: '指令', count: 10 },
-                        { name: 'perms', label: '权限', count: 10 }
+                        { id: 'styles', name: this.$t('样式-styles') },
+                        { id: 'props', name: this.$t('属性-props') },
+                        { id: 'events', name: this.$t('事件-events') },
+                        { id: 'directives', name: this.$t('指令-directives') },
+                        { id: 'perms', name: this.$t('权限-perms') }
                     ])
                 } else {
-                    this.tabLabelItemWidth = '25%'
                     this.tabPanels.splice(0, this.tabPanels.length, ...[
-                        { name: 'styles', label: '样式', count: 40 },
-                        { name: 'props', label: '属性', count: 30 },
-                        { name: 'events', label: '事件', count: 20 },
-                        { name: 'directives', label: '指令', count: 10 }
+                        { id: 'styles', name: this.$t('样式-styles') },
+                        { id: 'props', name: this.$t('属性-props') },
+                        { id: 'events', name: this.$t('事件-events') },
+                        { id: 'directives', name: this.$t('指令-directives') }
                     ])
                 }
             }
@@ -132,7 +150,7 @@
 
             // 默认有选中的节点
             const activeNode = LC.getActiveNode()
-            if (activeNode && activeNode.parentNode) {
+            if (activeNode) {
                 activeCallback({ target: activeNode })
             }
 
@@ -158,6 +176,10 @@
                     this.activeComponentNode.setProperty('tabPanelActive', tabPanelActive)
                 }
                 this.checkChildrenComponentInstance()
+                this.handlerClear()
+            },
+            handlerClear () {
+                this.keyword = ''
             }
         }
     }
@@ -167,39 +189,29 @@
     @import "@/css/variable";
 
     .material-modifier {
-        .bk-tab.king-tab {
+        .modifier-tab-container {
+            height: 49px;
+            background: #fff;
+            padding: 8px 12px;
+            border-bottom: 1px solid $boxBorderColor;
+        }
+        .bk-tab.en-king-tab {
             .bk-tab-header {
-                height: 47px;
-                border-bottom: 1px solid $boxBorderColor;
                 .bk-tab-label-wrapper {
-                    background: #fff;
                     .bk-tab-label-list {
-                        width: 100%;
-                        height: 100%;
-                        padding: 0 20px;
-                        .bk-tab-label-item {
-                            width: calc(var(--width));
-                            line-height: 46px;
-                            min-width: auto;
-                            padding: 0 2px;
-                            &.active::after {
-                                left: 16%;
-                                width: 68%;
-                            }
-                        }
+                        padding-left: 2px;
+                        padding-right: 12px;
                     }
                 }
-            }
-            .bk-tab-section {
-                padding: 0;
             }
 
         }
         .material-modifier-container {
             @mixin scroller;
-            height: calc(100vh - 167px - 93px);
+            height: calc(100vh - 104px - 42px - 84px);
             padding-bottom: 20px;
             overflow-y: auto;
+            overflow-x: hidden;
             position: relative;
         }
         /* bk-input 前后的 slot 文本样式 */
@@ -247,4 +259,16 @@
             margin: 10px 5px 5px 14px;
         }
     }
+    .props-search {
+        padding: 8px 12px;
+        .props-search-input input {
+            background-color: #F5F7FA;
+            border-radius: 2px;
+            border: 1px solid #fff;
+        &:focus {
+            border: 1px solid #3a84ff;
+        }
+    }
+    }
+    
 </style>

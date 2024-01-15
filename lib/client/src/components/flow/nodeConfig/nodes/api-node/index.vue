@@ -1,6 +1,6 @@
 <template>
     <div class="api-node-form">
-        <form-section title="基础配置">
+        <form-section :title="$t('基础配置')">
             <bk-form
                 ref="basicForm"
                 form-type="vertical"
@@ -8,10 +8,10 @@
                 :model="formData"
                 :rules="rules">
                 <div class="select-api">
-                    <bk-form-item label="节点名称" property="nodeName" :required="true">
+                    <bk-form-item :label="$t('form_节点名称')" property="nodeName" :required="true">
                         <bk-input v-model="formData.nodeName" @change="handleNameChange"></bk-input>
                     </bk-form-item>
-                    <bk-form-item label="处理人" :required="true">
+                    <bk-form-item :label="$t('处理人')" :required="true">
                         <processors
                             ref="processorsForm"
                             :value="processorData"
@@ -30,7 +30,7 @@
                         </choose-api>
                     </bk-form-item>
                     <bk-form-item
-                        label="请求地址"
+                        :label="$t('form_请求地址')"
                         property="url"
                         desc-type="icon"
                         :desc="apiURLTips"
@@ -39,28 +39,27 @@
                             <bk-input v-model="formData.url" :disabled="urlEditDisabled" @change="update"></bk-input>
                             <i
                                 v-if="lesscodeApiUrlToUpdate"
-                                v-bk-tooltips.top="'接口路径有变更，点击更新'"
+                                v-bk-tooltips.top="$t('接口路径有变更，点击更新')"
                                 class="bk-drag-icon bk-drag-refresh-line refresh-icon"
                                 @click="handleApiUrlUpdate">
                             </i>
                         </div>
                         <view-flow-variables :open-var-list.sync="openVarList"></view-flow-variables>
                         <div id="request-url-tips">
-                            <p>1.非蓝鲸网关API，请先接入【蓝鲸网关】</p>
-                            <p>2.确保选择的蓝鲸网关API给蓝鲸应用ID【{{BKPAAS_ENGINE_REGION === 'default' ? 'bk-itsm' : 'bkc-itsm'}}】已授权并设置了用户免认证策略</p>
-                            <p><span v-pre>3.请求地址可使用{{变量名}}引用流程上下文变量，比如http://host/{{id}}</span>
+                            <p>{{`1.${$t('非蓝鲸网关API，请先接入')}【${$t('蓝鲸网关')}】`}}</p>
+                            <p>{{`2.${$t('确保选择的蓝鲸网关API给蓝鲸应用ID')}【${BKPAAS_ENGINE_REGION === 'default' ? 'bk-itsm' : 'bkc-itsm'}】${$t('已授权并设置了用户免认证策略')}`}}</p>
+                            <p>{{`3.${$t('请求地址可使用\{\{变量名\}\}引用流程上下文变量，比如')}http://host/\$\{id\}`}}
                                 <bk-button
                                     style="padding: 0; height: initial; line-height: 14px;"
                                     size="small"
                                     :text="true"
                                     @click="openVarList = true">
-                                    查看可用变量
-                                </bk-button>
+                                    {{ $t('查看可用变量') }} </bk-button>
                             </p>
                         </div>
                     </bk-form-item>
                     <bk-form-item
-                        label="请求类型"
+                        :label="$t('form_请求类型')"
                         property="method"
                         :required="true">
                         <bk-select
@@ -80,34 +79,44 @@
             </bk-form>
         </form-section>
         <form-section
-            title="请求参数"
-            desc="（调用该API需要传递的参数信息）"
+            :title="$t('请求头')"
+            class="no-content-padding"
+            style="margin-top: 16px;">
+            <div class="headers-data" style="width: 83%; margin-top: 22px;">
+                <headers-config ref="headerRef" :headers="apiHeaders" @update="handleParamsChange('apiHeaders', $event)"></headers-config>
+            </div>
+        </form-section>
+        <form-section
+            :title="$t('请求参数')"
+            :desc="`（${$t('调用该API需要传递的参数信息')}）`"
             class="no-content-padding"
             style="margin-top: 16px;">
             <debug-api @extractScheme="handleExtractResponseFields"></debug-api>
             <div class="api-data" style="width: 83%; margin-top: 22px;">
                 <query-params
                     v-if="METHODS_WITHOUT_DATA.includes(formData.method)" :variable-list="variableList"
+                    ref="queryRef"
                     :query="apiQuery"
                     @update="handleParamsChange('apiQuery', $event)">
                 </query-params>
                 <body-params
                     v-else
+                    ref="bodyRef"
                     :variable-list="variableList"
                     :body="apiBody"
                     @update="handleParamsChange('apiBody', $event)">
                 </body-params>
-                <headers-config :headers="apiHeaders" @update="handleParamsChange('apiHeaders', $event)"></headers-config>
             </div>
         </form-section>
         <!-- 返回数据 -->
         <form-section
-            title="请求响应"
-            desc="（设置该API请求响应数据中的字段为全局变量，全局变量可在该API节点之后的流程节点中使用）"
+            :title="$t('请求响应')"
+            :desc="`（${$t('设置该API请求响应数据中的字段为全局变量，全局变量可在该API节点之后的流程节点中使用')}）`"
             class="no-content-padding"
             style="margin-top: 16px;">
             <div class="response-data" style="width: 83%; margin-top: 22px;">
                 <response-variable
+                    ref="responseRef"
                     :response="apiResponse"
                     @update="handleParamsChange('apiResponse', $event)">
                 </response-variable>
@@ -127,6 +136,7 @@
     import BodyParams from './body-params.vue'
     import ResponseVariable from './response-variable.vue'
     import { API_METHOD, METHODS_WITHOUT_DATA, parseScheme2UseScheme } from 'shared/api'
+    import { transformItsmHeader2Scheme } from 'shared/no-code'
     import { messageError } from '@/common/bkmagic'
 
     export default {
@@ -180,21 +190,21 @@
                     nodeName: [
                         {
                             required: true,
-                            message: '节点名称为必填项',
+                            message: this.$t('节点名称为必填项'),
                             trigger: 'blur'
                         }
                     ],
                     url: [
                         {
                             required: true,
-                            message: '必填项',
+                            message: this.$t('必填项'),
                             trigger: 'blur'
                         }
                     ],
                     method: [
                         {
                             required: true,
-                            message: '必填项',
+                            message: this.$t('必填项'),
                             trigger: 'blur'
                         }
                     ]
@@ -223,7 +233,7 @@
             if (apiInfo.url) {
                 const { selectedApi, url, method, headers, query, body, response } = apiInfo
                 this.formData = { ...this.formData, selectedApi, url, method }
-                this.apiHeaders = headers || []
+                this.apiHeaders = this.transOldHeaderData(headers || [])
                 this.apiQuery = query
                 this.apiBody = body
                 this.apiResponse = response
@@ -272,6 +282,14 @@
                     this.lesscodeApiUrlToUpdate = apiData.url
                 }
             },
+            // 兼容旧数据
+            // 旧版本header配置未使用统一组件，数据以itsm格式保存
+            transOldHeaderData (headers) {
+                if (headers.length > 0 && headers[0].hasOwnProperty('key') && !headers[0].hasOwnProperty('id')) {
+                    return transformItsmHeader2Scheme(headers)
+                }
+                return headers
+            },
             handleNameChange (val) {
                 this.$store.commit('nocode/nodeConfig/setNodeName', val)
             },
@@ -305,12 +323,18 @@
                 this.handleParamsChange('apiResponse', scheme)
             },
             validate () {
+                const paramsRef = METHODS_WITHOUT_DATA.includes(this.formData.method) ? this.$refs.queryRef : this.$refs.bodyRef
                 return Promise.all([
                     this.$refs.basicForm.validate(),
-                    this.$refs.processorsForm.validate()
+                    this.$refs.processorsForm.validate(),
+                    this.$refs.headerRef.validate(),
+                    paramsRef.validate(),
+                    this.$refs.responseRef.validate()
                 ]).then((result) => {
+                    console.log('validate result: ', result)
                     return result.every(item => item === true)
                 }).catch((e) => {
+                    console.log('validate error: ', e)
                     return false
                 })
             },
@@ -337,8 +361,13 @@
         padding: 0;
     }
 }
-.bk-form >>> .bk-form-item + .bk-form-item {
-    margin-top: 15px;
+>>> .bk-form {
+    .bk-form-item + .bk-form-item {
+        margin-top: 15px;
+    }
+    .bk-label {
+        width: auto !important;
+    }
 }
 .bk-form-radio {
     margin-right: 20px;

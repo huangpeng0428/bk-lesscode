@@ -1,32 +1,34 @@
 <template>
     <div class="action-tool-list">
-        <show-function />
-        <div class="func-split-line" />
-        <save-canvas />
-        <preview />
         <save-as-template v-if="iamNoResourcesPerm[$IAM_ACTION.manage_template[0]]" />
         <clear-canvas />
+        <code-and-json />
+        <show-function />
+        <show-variable />
         <quick-operation />
+        <canvas-guide />
     </div>
 </template>
 <script>
     import { mapGetters } from 'vuex'
 
-    import SaveCanvas from './components/save-canvas'
-    import Preview from './components/preview'
     import SaveAsTemplate from './components/save-as-template'
     import ClearCanvas from './components/clear-canvas'
+    import CodeAndJson from './components/code-and-json'
     import ShowFunction from './components/show-function'
+    import ShowVariable from './components/show-variable'
     import QuickOperation from './components/quick-operation'
+    import CanvasGuide from './components/canvas-guide'
 
     export default {
         components: {
-            SaveCanvas,
-            Preview,
             SaveAsTemplate,
             ClearCanvas,
+            CodeAndJson,
             ShowFunction,
-            QuickOperation
+            ShowVariable,
+            QuickOperation,
+            CanvasGuide
         },
         computed: {
             ...mapGetters(['iamNoResourcesPerm'])
@@ -38,11 +40,5 @@
         display: flex;
         align-items: center;
         height: 100%;
-    }
-    .func-split-line {
-        height: 22px;
-        width: 1px;
-        margin-left: 5px;
-        background-color: #dcdee5;
     }
 </style>

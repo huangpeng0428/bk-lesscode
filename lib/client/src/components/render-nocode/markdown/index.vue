@@ -1,28 +1,36 @@
 <template>
-    <draw-layout :hide-right-slot="navEmpty">
-        <layout>
-            <div class="markdown-page-wrapper">
-                <mavon-editor style="height: 100%" v-model="localValue" ref="md" @imgAdd="uploadImg" :tool-bars="toolbarsSetting" />
-            </div>
-        </layout>
-        <div v-if="!navEmpty" class="markdown-setting-wrapper" slot="right">
-            <layout-setting :template-data="curTemplateData" />
+    <draw-layout>
+        <section class="nocode-center-content-wrapper" ref="root" :style="centerRenderStyle">
+            <layout>
+                <div class="markdown-page-wrapper">
+                    <mavon-editor style="height: 100%" v-model="localValue" ref="md" @imgAdd="uploadImg" :tool-bars="toolbarsSetting" />
+                </div>
+            </layout>
+        </section>
+        <div class="markdown-setting-wrapper" slot="right">
+            <layout-setting v-if="curTemplateData.panelActive" :template-data="curTemplateData" />
+            <page-setting v-else />
         </div>
     </draw-layout>
 </template>
 <script>
     import DrawLayout from '@/views/index/components/draw-layout'
-    import Layout from '@/components/render/pc/widget/layout'
+    import Layout from '@/components/render-nocode/components/layout'
+    import PageSetting from '@/element-materials/modifier/page'
     import LayoutSetting from '@/element-materials/modifier/template'
+    import contentWidthMixin from '../content-width-mixin'
     import { mapGetters } from 'vuex'
+    import { uuid } from '@/common/util'
 
     export default {
         name: 'markdown',
         components: {
             DrawLayout,
             Layout,
+            PageSetting,
             LayoutSetting
         },
+        mixins: [contentWidthMixin],
         data () {
             return {
                 localValue: '',
@@ -79,10 +87,11 @@
         },
         methods: {
             uploadImg (pos, $file) {
+                const extension = $file._name?.split('.')?.pop()
                 // 将图片上传到服务器
                 const data = {
                     fileObj: {
-                        name: $file._name,
+                        name: uuid() + '.' + extension,
                         content: $file.miniurl
                     },
                     projectId: this.$route.params.projectId

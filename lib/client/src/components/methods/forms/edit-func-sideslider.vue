@@ -1,11 +1,11 @@
 <template>
-    <bk-sideslider
+    <lc-sideslider
         transfer
         :is-show="isShow"
         :quick-close="true"
         :title="title"
         :width="1200"
-        :before-close="handleClose"
+        @update:isShow="close"
     >
         <section class="func-form-home" slot="content">
             <form-market
@@ -32,6 +32,8 @@
             <form-detail
                 :form.sync="form"
                 :variable-list="variableList"
+                :api-list="apiList"
+                :function-list="functionList"
                 :show-token="true"
                 ref="detail"
             ></form-detail>
@@ -40,6 +42,7 @@
                 ref="summary"
             ></form-summary>
             <form-monaco
+                v-bkloading="{ isLoading }"
                 :form.sync="form"
                 :function-list="functionList"
                 :variable-list="variableList"
@@ -48,15 +51,16 @@
             ></form-monaco>
         </section>
         <section slot="footer" class="add-footer">
-            <bk-button theme="primary" @click="handleSubmit" :loading="isSubmitting">提交</bk-button>
-            <bk-button @click="handleClose">取消</bk-button>
+            <bk-button theme="primary" @click="handleSubmit" :loading="isSubmitting">{{ $t('提交') }}</bk-button>
+            <bk-button @click="handleClose">{{ $t('取消') }}</bk-button>
         </section>
-    </bk-sideslider>
+    </lc-sideslider>
 </template>
 
 <script>
     import mixins from './form-mixins'
     import { mapGetters, mapActions } from 'vuex'
+    import { leaveConfirm } from '@/common/leave-confirm'
 
     export default {
         mixins: [mixins],
@@ -70,6 +74,7 @@
         data () {
             return {
                 functionList: [],
+                apiList: [],
                 isLoading: false,
                 isSubmitting: false
             }
@@ -88,6 +93,7 @@
             isShow (val) {
                 if (val) {
                     this.freshFunctionList()
+                    // this.getApiListFromApi()
                 }
             }
         },
@@ -98,6 +104,21 @@
                 'createFunction',
                 'editFunction'
             ]),
+            ...mapActions('api', ['getApiList']),
+
+            // getApiListFromApi () {
+            //     this.getApiList({
+            //         projectId: this.projectId,
+            //         versionId: this.currentVersionId
+            //     }).then((res) => {
+            //         this.apiList = res
+            //     })
+            // },
+
+            close () {
+                this.$emit('close')
+                this.$emit('update:isShow', false)
+            },
 
             freshFunctionList () {
                 this.isLoading = true
@@ -131,9 +152,9 @@
             submitEdit (form) {
                 this.isSubmitting = true
                 this.editFunction(form).then(() => {
-                    this.formChanged = false
-                    this.messageSuccess('编辑函数成功')
-                    this.handleClose()
+                    window.leaveConfirm = false
+                    this.messageSuccess(this.$t('编辑函数成功'))
+                    this.close()
                     this.$emit('success-submit')
                 }).catch((err) => {
                     if (err?.code === 499) {
@@ -160,9 +181,9 @@
                     projectId: this.projectId,
                     versionId: this.currentVersionId
                 }).then(() => {
-                    this.formChanged = false
-                    this.messageSuccess('新增函数成功')
-                    this.handleClose()
+                    window.leaveConfirm = false
+                    this.messageSuccess(this.$t('新增函数成功'))
+                    this.close()
                     this.$emit('success-submit')
                 }).catch((err) => {
                     if (err?.code === 499) {
@@ -183,20 +204,12 @@
             },
 
             handleClose () {
-                const confirmFn = () => {
-                    this.$emit('close')
-                    this.$emit('update:isShow', false)
-                }
-                if (this.formChanged) {
-                    this.$bkInfo({
-                        title: '请确认是否关闭',
-                        subTitle: '存在未保存的函数，关闭后不会保存更改',
-                        confirmFn
+                leaveConfirm(window.i18n.t('存在未保存的函数，关闭后不会保存更改'))
+                    .then(() => {
+                        this.close()
                     })
-                } else {
-                    confirmFn()
-                }
             }
+
         }
     }
 </script>

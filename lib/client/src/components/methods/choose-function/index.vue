@@ -12,12 +12,15 @@
             :tippy-options="{ arrow: false }"
             :on-show="getFunctionListFromApi"
         >
-            <bk-input
-                class="choose-input"
-                placeholder="请选择函数"
-                :value="renderChoosenFunction.methodCode"
-                readonly
-            />
+            <section class="choose-function-trigger">
+                <slot name="trigger-prefix"></slot>
+                <bk-input
+                    class="choose-input"
+                    :placeholder="$t('请选择函数')"
+                    :value="renderChoosenFunction.methodCode"
+                    readonly
+                />
+            </section>
             <i
                 :class="[
                     'choose-icon bk-icon icon-angle-down',
@@ -50,6 +53,7 @@
                         >
                             <bk-input
                                 class="choose-function-search"
+                                v-enStyle="'width: 360px'"
                                 left-icon="bk-icon icon-search"
                                 behavior="simplicity"
                                 v-model="searchFunctionName"
@@ -61,13 +65,13 @@
                                         :key="funcGroup.groupName"
                                         v-for="funcGroup in computedFunctionData"
                                     >
-                                        <span class="function-group-name">
+                                        <span class="function-group-name" v-enStyle="'width: 360px'">
                                             {{ funcGroup.groupName }}（{{ funcGroup.children.length }}）
                                         </span>
                                         <ul class="group-function-list">
                                             <li
                                                 v-bk-tooltips="{
-                                                    content: functionData.funcSummary,
+                                                    content: $t(functionData.funcSummary),
                                                     disabled: !functionData.funcSummary,
                                                     placements: ['left-start'],
                                                     width: 200,
@@ -97,7 +101,7 @@
                                     text
                                     @click="handleCreateFunction"
                                 >
-                                    <i class="bk-icon icon-plus-circle"></i>新增
+                                    <i class="bk-icon icon-plus-circle"></i>{{ $t('新增') }}
                                 </bk-button>
                             </template>
                             <ul class="function-list" v-else>
@@ -105,7 +109,7 @@
                                     class="function-item"
                                     v-for="functionData in computedFunctionData"
                                     v-bk-tooltips="{
-                                        content: functionData.funcSummary,
+                                        content: $t(functionData.funcSummary),
                                         disabled: !functionData.funcSummary,
                                         placements: ['left-start'],
                                         width: 200,
@@ -117,7 +121,7 @@
                                     <span
                                         class="function-tool"
                                         @click="handleInsertFunction(functionData)"
-                                    >引用</span>
+                                    >{{ $t('引用') }}</span>
                                 </li>
                             </ul>
                             <bk-exception
@@ -142,18 +146,27 @@
                 >
                     <span
                         v-bk-tooltips="{
-                            content: '1. 配置的执行参数，会在函数执行的时候传入<br>2. 参数选择【事件】类型，则无需填写，函数执行的时候会使用组件事件提供的值作为参数（如表格组件的 page-change 事件会提供参数）<br>3. 组件事件提供的参数是优先接收的，确保放到前边<br>4. 参数还可以选择手动输入值、使用变量值或表达式',
+                            content: `1.${$t('配置的执行参数，会在函数执行的时候传入')}
+                            2. ${$t('参数选择【事件】类型，则无需填写，函数执行的时候会使用组件事件提供的值作为参数（如表格组件的 page-change 事件会提供参数）')}
+                            3. ${$t('组件事件提供的参数是优先接收的，确保放到前边')}
+                            4. ${$t('参数还可以选择手动输入值、使用变量值或表达式')}`,
                             width: '350px',
                             placements: ['left'],
-                            boundary: 'window'
+                            boundary: 'window',
+                            disabled: !showParamTips
                         }"
                         class="param-title"
                         slot="title"
                     >
-                        <span class="title">参数（{{ computedParamKeys[index] }}）</span>
+                        <span :class="{ title: showParamTips }">{{$t('参数（{0}）',[computedParamKeys[index]])}}</span>
                     </span>
                     <bk-input
                         :value="panel.value"
+                        v-bk-tooltips="{
+                            content: paramTips,
+                            boundary: 'window',
+                            disabled: !paramTips
+                        }"
                         @change="value => handleInputParam(index, { value })"
                         @blur="triggleUpdate"
                     />
@@ -202,15 +215,22 @@
             defaultVariableFormat: {
                 type: String,
                 default: 'value'
+            },
+            showParamTips: {
+                type: Boolean,
+                default: true
+            },
+            paramTips: {
+                type: String
             }
         },
 
         data () {
             return {
                 functionTypeList: [
-                    { name: 'functionTemplate', label: '事件模板' },
-                    { name: 'functionMarket', label: '函数市场' },
-                    { name: 'functionList', label: '应用函数管理' }
+                    { name: 'functionTemplate', label: this.$t('事件模板') },
+                    { name: 'functionMarket', label: this.$t('函数市场') },
+                    { name: 'functionList', label: this.$t('应用函数管理') }
                 ],
                 searchFunctionName: '',
                 functionType: 'functionList',
@@ -225,19 +245,21 @@
 
         computed: {
             ...mapGetters('functions', ['funcGroups']),
+            ...mapGetters('projectVersion', ['currentVersionId']),
 
             computedFunctionData () {
                 let functionData
+                const reg = new RegExp(this.searchFunctionName, 'i')
                 switch (this.functionType) {
                     case 'functionTemplate':
                         functionData = this
                             .functionTemplates
-                            ?.filter(functionTemplate => functionTemplate.funcName?.includes(this.searchFunctionName))
+                            ?.filter(functionTemplate => reg.test(functionTemplate.funcName))
                         break
                     case 'functionMarket':
                         functionData = this
                             .marketFunctionList
-                            ?.filter(marketFunction => marketFunction.funcName?.includes(this.searchFunctionName))
+                            ?.filter(marketFunction => reg.test(marketFunction.funcName))
                         break
                     case 'functionList':
                         functionData = this
@@ -245,7 +267,8 @@
                             ?.reduce((acc, cur) => {
                                 const children = cur
                                     .children
-                                    .filter(functionData => functionData.funcName?.includes(this.searchFunctionName))
+                                    // .filter(functionData => functionData.funcName?.reg(this.searchFunctionName))
+                                    .filter(functionData => reg.test(functionData.funcName))
                                 acc.push({
                                     ...cur,
                                     children
@@ -269,25 +292,30 @@
             }
         },
 
-        created () {
-            this.renderChoosenFunction = {
-                methodCode: this.choosenFunction?.methodCode || '',
-                params: [...this.choosenFunction?.params || []]
-            }
+        watch: {
+            choosenFunction: {
+                handler () {
+                    this.renderChoosenFunction = {
+                        methodCode: this.choosenFunction?.methodCode || '',
+                        params: [...this.choosenFunction?.params || []]
+                    }
 
-            // 如果有选择函数，需要查找到对应的 params
-            if (this.renderChoosenFunction.methodCode) {
-                this.renderChoosenFunction.params = this.computedParamKeys.map((paramKey, index) => {
-                    let param = {
-                        value: '',
-                        code: '',
-                        format: this.defaultVariableFormat
+                    // 如果有选择函数，需要查找到对应的 params
+                    if (this.renderChoosenFunction.methodCode) {
+                        this.renderChoosenFunction.params = this.computedParamKeys.map((paramKey, index) => {
+                            let param = {
+                                value: '',
+                                code: '',
+                                format: this.defaultVariableFormat
+                            }
+                            if (this.choosenFunction?.params?.[index]) {
+                                param = this.choosenFunction.params[index]
+                            }
+                            return param
+                        })
                     }
-                    if (this.choosenFunction?.params?.[index]) {
-                        param = this.choosenFunction.params[index]
-                    }
-                    return param
-                })
+                },
+                immediate: true
             }
         },
 
@@ -304,9 +332,7 @@
             },
 
             triggleUpdate () {
-                if (window.event.sourceCapabilities) {
-                    this.$emit('change', JSON.parse(JSON.stringify(this.renderChoosenFunction)))
-                }
+                this.$emit('change', JSON.parse(JSON.stringify(this.renderChoosenFunction)))
             },
 
             handleChooseFunction (functionData) {
@@ -446,8 +472,12 @@
             font-size: 14px;
         }
     }
-    .choose-input {
+    .choose-function-trigger {
+        display: flex;
         width: 100%;
+    }
+    .choose-input {
+        flex: 1;
         cursor: pointer;
         ::v-deep .bk-form-input[readonly] {
             background-color: #ffffff !important;

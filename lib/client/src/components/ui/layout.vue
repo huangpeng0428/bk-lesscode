@@ -4,7 +4,7 @@
             <div class="wraper">
                 <slot name="left" />
             </div>
-            <div class="toggle-btn" @click="handleToggle" v-bk-tooltips.right="isToggleLeft ? '展开' : '收起'">
+            <div class="toggle-btn" @click="handleToggle" v-bk-tooltips.right="isToggleLeft ? $t('展开') : $t('收起')">
                 <i class="toggle-btn-arrow bk-drag-icon bk-drag-angle-left" />
             </div>
         </div>
@@ -179,6 +179,7 @@
             height: 100%;
             background: #fff;
             overflow-y: auto;
+            @mixin scroller;
         }
     }
 </style>

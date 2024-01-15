@@ -2,7 +2,7 @@
     <div class="class-list" v-bkloading="{ isLoading }">
         <div class="header">
             <bk-input :value="searchValue" @change="handleSearch" />
-            <div class="create-btn" v-bk-tooltips.top="'添加分类'" role="operation" @click.stop="handleShowCreate">
+            <div class="create-btn" v-bk-tooltips.top="$t('添加分类')" role="operation" @click.stop="handleShowCreate">
                 <i class="bk-icon icon-plus-line" />
             </div>
         </div>
@@ -25,7 +25,7 @@
                         @click="handleSelect(item.id)">
                         <i v-if="!searchValue" class="bk-drag-icon bk-drag-grag-fill drag-flag" />
                         <i class="bk-drag-icon bk-drag-folder-fill" />
-                        <div class="name">{{ item.name }}</div>
+                        <div class="name" v-tooltips="item.name">{{ item.name }}</div>
                         <div class="action">
                             <div class="btn edit-btn" @click.stop="handleEdit(item, $event)" role="operation">
                                 <i class="bk-icon icon-edit2" style="font-size: 20px;" />
@@ -37,6 +37,7 @@
                         <div class="count">{{ item.count }}</div>
                     </div>
                 </transition-group>
+                <empty-status v-if="renderList.length <= 0" :type="emptyType" @clearSearch="handlerClearSearch" :part="false"></empty-status>
             </vue-draggable>
         </div>
         <div v-if="isShowCreate" ref="operation" class="category-operation" :style="operationStyles" @click.stop="">
@@ -44,7 +45,7 @@
                 <bk-input
                     v-model="newCategory"
                     :native-attributes="{ autofocus: 'autofocus' }"
-                    placeholder="请输入模板分类，多个分类“/”分隔，回车结束"
+                    :placeholder="$t('请输入模板分类，多个分类“/”分隔，回车结束')"
                     @keyup="handleSubmitCategory" />
             </div>
         </div>
@@ -86,6 +87,12 @@
                     top: `${this.operationPosition.top + 36}px`,
                     left: `${this.operationPosition.left - 26}px`
                 }
+            },
+            emptyType () {
+                if (this.searchValue) {
+                    return 'search'
+                }
+                return 'noData'
             }
         },
         created () {
@@ -161,7 +168,7 @@
                 this.$emit('on-change', categoryId)
             },
             handleShowCreate (event) {
-                const $target = getParentByRole(event.path, 'operation')
+                const $target = getParentByRole(event.path || event.composedPath(), 'operation')
                 const { top, left } = $target.getBoundingClientRect()
                 this.operationPosition = {
                     top,
@@ -192,7 +199,7 @@
                 }
                 const isDupName = this.list.some(_ => _.category === value)
                 if (isDupName) {
-                    this.messageError('分类重名')
+                    this.messageError(window.i18n.t('分类重名'))
                 }
                 try {
                     if (this.editCategory.id) {
@@ -201,14 +208,14 @@
                             name: this.newCategory,
                             belongProjectId: parseInt(this.$route.params.projectId)
                         })
-                        this.messageSuccess('编辑模板分类成功')
+                        this.messageSuccess(window.i18n.t('编辑模板分类成功'))
                     } else {
                         await this.$store.dispatch('pageTemplate/categoryCreate', {
                             name: this.newCategory,
                             belongProjectId: parseInt(this.$route.params.projectId)
                         })
                         this.searchValue = ''
-                        this.messageSuccess('添加模板分类成功')
+                        this.messageSuccess(window.i18n.t('添加模板分类成功'))
                     }
 
                     this.handleHideCreate()
@@ -222,7 +229,7 @@
             },
             async handleDelete (category) {
                 if (this.list.length === 1) {
-                    this.messageError('模板分类不能为空')
+                    this.messageError(window.i18n.t('模板分类不能为空'))
                     return
                 }
                 try {
@@ -231,9 +238,13 @@
                         belongProjectId: parseInt(this.$route.params.projectId),
                         id: category.id
                     })
-                    this.messageSuccess('删除模板分类成功')
+                    this.messageSuccess(window.i18n.t('删除模板分类成功'))
                     this.fetchData()
                 } catch {}
+            },
+            handlerClearSearch (searchName) {
+                this.searchValue = searchName
+                this.handleSearch(searchName)
             }
         }
     }
@@ -242,7 +253,7 @@
     .class-list{
         position: relative;
         z-index: 1;
-        height: calc(100vh - 120px);
+        height: calc(100% - 64px);
         .header{
             display: flex;
             padding: 16px 18px;

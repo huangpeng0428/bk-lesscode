@@ -1,12 +1,15 @@
 <template>
     <div class="panel-tree">
-        <div class="tree-search-area">
+        <div class="tree-search-area canvas-search-input">
             <bk-input
+                ref="search"
                 class="tree-search"
+                :placeholder="$t('组件ID')"
                 :right-icon="'bk-icon icon-search'"
                 :clearable="true"
                 @change="handleSearch" />
             <span
+                class="tree-toggle-span"
                 :class="['bk-drag-icon', treeFoldIcon]"
                 v-bk-tooltips="tooltip"
                 @click="handleToggleExpandTree">
@@ -17,13 +20,13 @@
                 ref="tree"
                 :selectable="true"
                 :expand-on-click="false"
-                class="component-tree"
+                ext-cls="component-tree"
                 @expand-change="checkIsAllExpanded"
                 @select-change="handleNodeSelect">
                 <div slot-scope="{ data: nodeData }">
                     <div class="component-tree-node-item">
                         <i
-                            class="bk-drag-icon"
+                            class="bk-drag-icon tree-node-item"
                             :class="nodeData.payload.componentData.material.icon" />
                         <span>{{ nodeData.name }}</span>
                         <i
@@ -34,7 +37,7 @@
                                 'bk-drag-invisible-eye': !nodeData.payload.componentData.interactiveShow
                             }"
                             v-bk-tooltips="{
-                                content: nodeData.payload.componentData.interactiveShow ? '隐藏' : '显示',
+                                content: nodeData.payload.componentData.interactiveShow ? $t('隐藏') : $t('显示'),
                                 placement: 'top',
                                 interactive: false
                             }"
@@ -42,12 +45,7 @@
                     </div>
                 </div>
             </bk-big-tree>
-            <bk-exception
-                v-if="isEmpty"
-                type="empty"
-                scene="part">
-                页面为空
-            </bk-exception>
+            <empty-status v-if="isEmpty" :type="emptyEmpty" :part="false" @clearSearch="handlerClearSearch"></empty-status>
         </div>
     </div>
 </template>
@@ -60,7 +58,7 @@
         if (!tree) {
             return []
         }
-        
+
         return tree.map(node => Object.freeze({
             id: node.componentId,
             name: node.componentId,
@@ -75,7 +73,8 @@
         data () {
             return {
                 allExpanded: false,
-                isEmpty: false
+                isEmpty: false,
+                emptyEmpty: 'noData'
             }
         },
         computed: {
@@ -83,15 +82,15 @@
                 return this.allExpanded ? 'bk-drag-unfold' : 'bk-drag-fold'
             },
             tooltip () {
-                return this.allExpanded ? '收起所有' : '展开所有'
+                return this.allExpanded ? window.i18n.t('收起所有') : window.i18n.t('展开所有')
             }
         },
-        
+
         mounted () {
             const data = getDataFromNodeTree(LC.getRoot().children)
             this.$refs.tree.setData(data)
             this.isEmpty = data.length < 1
-            
+
             /**
              * @desc 组件树监听 update 回调
              * @param { Object } event
@@ -139,14 +138,14 @@
                     }
                     activeNodeParent = activeNodeParent.parentNode
                 }
-                
+
                 this.$refs.tree.setSelected(activeNode.componentId)
             }
 
             LC.addEventListener('update', updateCallback)
             LC.addEventListener('active', activeCallback)
             LC.addEventListener('toggleInteractive', updateCallback)
-            
+
             this.$once('hook:beforeDestroy', () => {
                 LC.removeEventListener('update', updateCallback)
                 LC.removeEventListener('active', activeCallback)
@@ -163,11 +162,15 @@
             handleSearch: _.debounce(function (text) {
                 const data = this.$refs.tree.filter(text.trim())
                 if (data.length > 0) {
+                    this.isEmpty = false
                     this.$nextTick(() => {
                         this.$refs.tree.setSelected(data[0].id, {
                             emitEvent: true
                         })
                     })
+                } else {
+                    this.isEmpty = true
+                    this.emptyEmpty = text ? 'search' : 'noData'
                 }
             }, 300),
             /**
@@ -236,7 +239,7 @@
                     }
                     return null
                 }
-                
+
                 componentData.active()
 
                 // 选中节点对应的组件是交互式组件
@@ -265,6 +268,10 @@
              */
             checkIsAllExpanded () {
                 this.allExpanded = this.$refs.tree.nodes.every(node => node.isLeaf || node.expanded)
+            },
+
+            handlerClearSearch () {
+                this.$refs.search.handlerClear()
             }
         }
     }
@@ -281,11 +288,17 @@
         display: flex;
         align-items: center;
         .tree-search {
-            width: 242px;
             flex: 1;
-            margin-right: 12px;
+            margin-right: 8px;
         }
-        .bk-drag-icon {
+        .tree-toggle-span {
+            display: flex;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            background: #F5F7FA;
+            color: #979BA5;
             cursor: pointer;
             &:hover {
                 color: #3a84ff;
@@ -306,6 +319,9 @@
                     position: relative;
                     padding-right: 30px;
                     font-size: 12px;
+                    .tree-node-item {
+                        margin-right: 8px;
+                    }
                     .component-eye-control {
                         position: absolute;
                         right: 18px;
@@ -316,7 +332,15 @@
                     }
                 }
                 &.is-root {
-                    padding-left: 10px;
+                    padding-left: 12px;
+                        .tree-node-item {
+                            margin-left: 4px;
+                        }
+                        &.is-leaf {
+                            .tree-node-item {
+                                margin-left: 6px;
+                        }
+                        }
                 }
                 &.is-selected .node-icon {
                     color: #3a84ff;

@@ -7,6 +7,7 @@
             @change="update">
         </bk-input>
         <bk-select
+            :key="field.key"
             v-else-if="['SELECT', 'INPUTSELECT', 'MULTISELECT', 'CHECKBOX', 'RADIO'].includes(field.type)"
             v-model="localVal"
             :multiple="['MULTISELECT', 'CHECKBOX'].includes(field.type)"
@@ -28,8 +29,7 @@
             theme="primary"
             :text="true"
             @click="richTextVisible = true">
-            前往设置
-        </bk-button>
+            {{ $t('前往设置') }} </bk-button>
         <field-item
             v-else
             :field="field"
@@ -42,7 +42,7 @@
         <bk-dialog
             v-model="richTextVisible"
             theme="primary"
-            title="内容配置"
+            :title="$t('内容配置')"
             header-position="left"
             :width="960"
             :mask-close="false"
@@ -50,7 +50,6 @@
             @cancel="localVal = ''">
             <field-item
                 :field="field"
-                :use-fixed-data-source="true"
                 :value="localVal"
                 :disabled="disabled"
                 :show-label="false"
@@ -63,7 +62,7 @@
     // 表单字段编辑时填写默认值组件
     import cloneDeep from 'lodash.clonedeep'
     import FieldItem from '@/components/flow-form-comp/form/fieldItem.vue'
-
+    
     export default {
         name: 'DetermineValue',
         components: {
@@ -81,6 +80,7 @@
         },
         data () {
             return {
+           
                 richTextVisible: false,
                 localVal: this.getLocalVal()
             }
@@ -106,6 +106,7 @@
                 }
                 return dftVal
             },
+            
             handleFieldValueChange (val) {
                 this.localVal = val
                 this.update()

@@ -4,7 +4,8 @@
         <div class="search-container" v-bk-clickoutside="handleHideDropList">
             <bk-input
                 clearable
-                :placeholder="'组件名称'"
+                ext-cls="form-search-input"
+                :placeholder="$t('请输入组件名称搜索')"
                 :right-icon="'bk-icon icon-search'"
                 v-model.trim="searchValue"
                 @change="handleSearch"
@@ -43,7 +44,7 @@
                     }"
                     class="outside-ul">
                     <li class="search-dropdown-list-item">
-                        <span class="text">没有找到</span>
+                        <span class="text">{{ $t('没有找到') }}</span>
                     </li>
                 </ul>
             </div>
@@ -61,7 +62,7 @@
                     <span>{{ group.name }}</span>
                 </div>
                 <draggable
-                    :class="['list-wrap', { 'disabled': disabled }]"
+                    :class="['form-list-wrap', { 'disabled': disabled }]"
                     handle=".field-item"
                     filter=".not-available"
                     tag="p"
@@ -80,10 +81,10 @@
                         <li
                             v-for="field in group.items"
                             v-bk-tooltips="{
-                                disabled: pageType !== 'FLOW' || !layoutGroup.includes(field.type),
-                                content: '流程表单暂不支持布局类型控件'
+                                disabled: !isFieldDisable(field.type),
+                                content: $t('流程表单暂不支持布局类型控件')
                             }"
-                            :class="['field-item drag-entry', { 'not-available': pageType === 'FLOW' && layoutGroup.includes(field.type) }]"
+                            :class="['field-item drag-entry', { 'not-available': isFieldDisable(field.type) }]"
                             :data-type="field.type"
                             :key="field.type">
                             <i :class="['comp-icon',field.icon]"></i> <span>{{ field.name }}</span>
@@ -97,9 +98,12 @@
 
 <script>
     import draggable from 'vuedraggable'
-    import { FIELDS_TYPES } from '@/components/flow-form-comp/form/constants/forms'
+    import { FIELDS_TYPES } from 'shared/no-code/constant'
     import _ from 'lodash'
     const LAYOUT_GROUP = ['DESC', 'DIVIDER']
+    const ADVANCED_GROUP = ['COMPUTE', 'SERIAL']
+    const ALL_FIELDS = FIELDS_TYPES()
+
     export default {
         components: {
             draggable
@@ -110,7 +114,7 @@
         },
         data () {
             return {
-                list: this.getGroupedFields(FIELDS_TYPES),
+                list: this.getGroupedFields(ALL_FIELDS),
                 searchValue: '',
                 isShowList: '',
                 selectedIndex: 0,
@@ -123,12 +127,17 @@
             getGroupedFields (fieldsArr) {
                 const group = [
                     {
-                        name: '布局控件',
+                        name: this.$t('布局控件'),
                         items: [],
                         isFolded: false
                     },
                     {
-                        name: '基础控件',
+                        name: this.$t('基础控件'),
+                        items: [],
+                        isFolded: false
+                    },
+                    {
+                        name: this.$t('高级控件'),
                         items: [],
                         isFolded: false
                     }
@@ -136,11 +145,16 @@
                 fieldsArr.forEach(item => {
                     if (LAYOUT_GROUP.includes(item.type)) {
                         group[0].items.push(item)
+                    } else if (ADVANCED_GROUP.includes(item.type)) {
+                        group[2].items.push(item)
                     } else {
                         group[1].items.push(item)
                     }
                 })
                 return group
+            },
+            isFieldDisable (type) {
+                return this.pageType === 'FLOW' && [...LAYOUT_GROUP, ...ADVANCED_GROUP, 'RATE'].includes(type)
             },
             handleMove () {
                 this.$emit('move')
@@ -159,11 +173,11 @@
                 this.filterRenderList()
             }, 300),
             filterRenderList () {
-                this.renderList = FIELDS_TYPES.filter(item => item.name.includes(this.searchValue))
+                this.renderList = ALL_FIELDS.filter(item => item.name.includes(this.searchValue))
                 this.isShowList = true
             },
             handleResetField () {
-                this.list = this.getGroupedFields(FIELDS_TYPES)
+                this.list = this.getGroupedFields(ALL_FIELDS)
                 this.isShowList = true
                 this.handleHideDropList()
             },
@@ -232,12 +246,12 @@
                 this.searchValue = data.name
                 const group = [
                     {
-                        name: '布局控件',
+                        name: this.$t('布局控件'),
                         items: [],
                         isFolded: false
                     },
                     {
-                        name: '基础控件',
+                        name: this.$t('基础控件'),
                         items: [],
                         isFolded: false
                     }
@@ -249,12 +263,23 @@
         }
     }
 </script>
+<style lang="postcss">
+    .form-search-input input {
+        background-color: #F5F7FA;
+        border-radius: 2px;
+        border: 1px solid #fff;
+        &:focus {
+            border: 1px solid #3a84ff;
+        }
+    }
+</style>
 <style lang="postcss" scoped>
 @import "@/css/mixins/scroller";
 @import "@/css/mixins/ellipsis";
 .side-panel {
   position: relative;
   height: 100%;
+  width: 300px;
   box-shadow: 1px 0 0 0 #DCDEE5;
   z-index: 1;
 }
@@ -271,10 +296,11 @@
 
 .fields-list-container {
   height: calc(100% - 56px);
-  overflow: hidden;
+  overflow: auto;
   width: 100%;
   background: #FFFFFF;
   box-shadow: 1px 0 0 0 #DCDEE5;
+  @mixin scroller;
 }
 
 .group-name {
@@ -299,13 +325,12 @@
     color: #63656E;
     transition: all .1s linear;
     margin-right: 8px;
-  //transform: rotate(-270deg);
 
     &.floded {
       transform: rotate(-90deg);
     }
   }
-  span{
+  span {
     display: block;
     position: absolute;
     top: 0;
@@ -314,7 +339,7 @@
   }
 }
 .search-container{
-  padding: 12px;
+  padding: 10px;
   position: relative;
   .search-dropdown-list {
     position: absolute;
@@ -345,7 +370,7 @@
       line-height: 32px;
       padding: 0 10px;
       color: #63656E;
-      font-size: 14px;
+      font-size: 12px;
       .text {
         @mixin ellipsis 100%;
         em {
@@ -377,11 +402,11 @@
   margin: 0 !important;
 }
 
-.list-wrap {
+.form-list-wrap {
   display: flex;
   justify-content: space-between;
   flex-flow: row wrap;
-//margin-top: 12px; padding: 12px;
+  padding: 12px;
   &.disabled {
     .field-item {
         cursor: inherit;;

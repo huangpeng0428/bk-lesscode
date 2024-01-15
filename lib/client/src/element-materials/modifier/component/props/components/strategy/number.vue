@@ -28,7 +28,7 @@
             </div>
         </div>
 
-        <p class="modifier-input-error-text" v-if="isError">{{describe.regErrorText || '格式错误，请重新输入'}}</p>
+        <p class="modifier-input-error-text" v-if="isError">{{$t(describe.regErrorText) || $t('格式错误，请重新输入')}}</p>
     </div>
 </template>
 
@@ -69,7 +69,9 @@
                     // 190, // .
                     38, 40, 37, 39, // up down left right
                     46, // del
-                    9 // tab
+                    9, // tab
+                    96, 97, 98, 99, 100, 101, 102, 103, 104, 105, // 小键盘0-9
+                    109, 110 // 小键盘 - .
                 ],
                 renderValue: 0
             }

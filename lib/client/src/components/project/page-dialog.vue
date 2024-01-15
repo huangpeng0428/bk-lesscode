@@ -10,23 +10,23 @@
             header-position="left"
             ext-cls="page-operate-dialog"
         >
-            <bk-form ref="dialogForm" class="dialog-form" :label-width="86" :rules="dialog.formRules" :model="dialog.formData">
-                <bk-form-item label="页面名称" required property="pageName" error-display-type="normal">
+            <bk-form ref="dialogForm" class="dialog-form" :label-width="200" form-type="vertical" :rules="dialog.formRules" :model="dialog.formData">
+                <bk-form-item :label="$t('form_页面名称')" required property="pageName" error-display-type="normal">
                     <bk-input ref="projectDialogInput"
                         maxlength="60"
                         v-model.trim="dialog.formData.pageName"
-                        placeholder="请输入页面名称，60个字符以内">
+                        :placeholder="$t('请输入页面名称，60个字符以内')">
                     </bk-input>
                 </bk-form-item>
-                <bk-form-item label="页面ID" required property="pageCode" v-if="action !== 'rename'" error-display-type="normal">
+                <bk-form-item :label="$t('页面ID')" required property="pageCode" v-if="action !== 'rename'" error-display-type="normal">
                     <bk-input maxlength="60" v-model.trim="dialog.formData.pageCode"
-                        placeholder="以小写字母开头，由字母与数字组成，创建后不可更改">
+                        :placeholder="$t('以小写字母开头，由字母与数字组成，创建后不可更改')">
                     </bk-input>
                 </bk-form-item>
-                <bk-form-item label="页面路由" required property="pageRoute" v-if="action !== 'rename'"
+                <bk-form-item :label="$t('form_页面路由')" required property="pageRoute" v-if="action !== 'rename'"
                     error-display-type="normal">
                     <bk-input maxlength="60" v-model.trim="dialog.formData.pageRoute"
-                        placeholder="由数字、字母、下划线、中划线(-)、冒号(:)或反斜杠(/)组成">
+                        :placeholder="$t('由数字、字母、下划线、中划线(-)、冒号(:)或反斜杠(/)组成')">
                         <template slot="prepend">
                             <div class="group-text">
                                 {{layoutRoutePath}}
@@ -34,24 +34,14 @@
                         </template>
                     </bk-input>
                 </bk-form-item>
-                <bk-form-item
-                    label="本页面添加到导航菜单"
-                    v-if="action === 'create' && showAddNavListSwitcher"
-                    :label-width="170"
-                    error-display-type="normal">
-                    <bk-switcher
-                        theme="primary"
-                        :value="isAddNavList"
-                        @change="(val) => isAddNavList = val" />
-                </bk-form-item>
             </bk-form>
             <div class="dialog-footer" slot="footer">
                 <bk-button
                     theme="primary"
                     :disabled="disabled"
                     :loading="dialog.loading"
-                    @click="handleDialogConfirm">确定</bk-button>
-                <bk-button @click="handleDialogCancel" :disabled="dialog.loading">取消</bk-button>
+                    @click="handleDialogConfirm">{{ $t('确定') }}</bk-button>
+                <bk-button @click="handleDialogCancel" :disabled="dialog.loading">{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </section>
@@ -98,26 +88,36 @@
                         pageName: [
                             {
                                 required: true,
-                                message: '必填项',
+                                message: this.$t('必填项'),
+                                trigger: 'blur'
+                            },
+                            {
+                                validator: this.checkName,
+                                message: '该页面名称已存在',
                                 trigger: 'blur'
                             }
                         ],
                         pageCode: [
                             {
                                 required: true,
-                                message: '必填项',
+                                message: this.$t('必填项'),
                                 trigger: 'blur'
                             },
                             {
                                 regex: /^[a-z][a-zA-Z0-9]{0,60}$/,
-                                message: '以小写字母开头，由字母与数字组成',
+                                message: this.$t('以小写字母开头，由字母与数字组成'),
+                                trigger: 'blur'
+                            },
+                            {
+                                validator: this.checkName,
+                                message: '该页面ID已存在',
                                 trigger: 'blur'
                             }
                         ],
                         pageRoute: [
                             {
                                 required: true,
-                                message: '必填项',
+                                message: this.$t('必填项'),
                                 trigger: 'blur'
                             },
                             {
@@ -125,14 +125,14 @@
                                     try {
                                         compile(value)
                                         if (!/^[\w-_:\/?]+$/.test(value)) {
-                                            this.message = '由数字、字母、下划线、中划线(-)、冒号(:)或反斜杠(/)组成'
+                                            this.message = this.$t('由数字、字母、下划线、中划线(-)、冒号(:)或反斜杠(/)组成')
                                             return false
                                         } else if (/\/{2,}/.test(value)) {
-                                            this.message = '请检查路径正确性'
+                                            this.message = this.$t('请检查路径正确性')
                                             return false
                                         }
                                     } catch (e) {
-                                        this.message = '请检查路径正确性'
+                                        this.message = this.$t('请检查路径正确性')
                                         return false
                                     }
                                     return true
@@ -165,9 +165,6 @@
             },
             isMobile () {
                 return this.dialog.formData.pageType === 'MOBILE'
-            },
-            showAddNavListSwitcher () {
-                return this.selectedLayout.type && !['empty', 'mobile-empty'].includes(this.selectedLayout.type)
             }
         },
         watch: {
@@ -176,13 +173,15 @@
                     setTimeout(() => {
                         this.$refs.projectDialogInput && this.$refs.projectDialogInput.$el.querySelector('input').focus()
                     }, 50)
+                } else {
+                    this.$emit('closeDialog')
                 }
             },
             action: {
                 handler: function (val) {
-                    this.title = this.action === 'rename' ? '重命名' : '复制页面'
+                    this.title = this.action === 'rename' ? this.$t('重命名') : this.$t('复制页面')
                     this.requestMethod = this.action === 'rename' ? 'page/update' : 'page/copy'
-                    this.actionName = this.action === 'rename' ? '重命名' : '复制'
+                    this.actionName = this.action === 'rename' ? this.$t('重命名') : this.$t('复制')
                 },
                 immediate: true
             },
@@ -196,6 +195,24 @@
             this.layoutList = await this.$store.dispatch('layout/getList', { projectId: this.projectId, versionId: this.versionId })
         },
         methods: {
+            async checkName () {
+                const nameExist = await this.$store.dispatch('page/checkName', {
+                    data: {
+                        pageName: this.dialog.formData.pageName,
+                        pageCode: this.dialog.formData.pageCode,
+                        projectId: this.projectId,
+                        versionId: this.versionId,
+                        currentName: this.currentName,
+                        from: this.action,
+                        blurCheck: true
+                    }
+                })
+                if (nameExist) {
+                    return false
+                } else {
+                    return true
+                }
+            },
             async handleDialogConfirm () {
                 this.dialog.loading = true
                 try {
@@ -228,22 +245,14 @@
                             versionId: this.versionId
                         }
                     }
-                    if (this.action === 'create') {
-                        const { id, routePath } = this.layoutList.find(layout => layout.checked)
-                        payload.data.layout = { id, routePath }
-
-                        if (this.showAddNavListSwitcher) {
-                            payload.data.pageData.isAddNav = this.isAddNavList
-                        }
-                    }
                     const res = await this.$store.dispatch(this.requestMethod, payload)
                     if (res) {
                         this.$bkMessage({
                             theme: 'success',
-                            message: `${this.actionName}成功`
+                            message: this.$t('{0}成功', [this.actionName])
                         })
                         this.dialog.visible = false
-                        this.refreshList()
+                        this.refreshList(res)
                     }
                 } catch (err) {
                     console.error(err)

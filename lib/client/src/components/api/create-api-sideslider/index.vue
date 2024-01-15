@@ -1,49 +1,61 @@
 <template>
-    <bk-sideslider
+    <lc-sideslider
         transfer
         :title="title"
-        :is-show.sync="isShow"
+        :is-show="isShow"
         :quick-close="true"
         :width="1200"
-        :before-close="confirmClose"
-        @hidden="handleClose">
+        @update:isShow="close">
         <section
             class="api-form-home"
             slot="content"
         >
-            <h3 class="api-form-title">基本设置</h3>
+            <h3 class="api-form-title">{{ $t('基本设置') }}</h3>
             <render-basic
                 class="api-form"
                 ref="basicRef"
                 :form-data="formData"
                 @update="handleUpdate"
             />
-            <h3 class="api-form-title">默认请求参数</h3>
+            <h3 class="api-form-title">{{ $t('默认请求头') }}</h3>
+            <render-header
+                class="api-form"
+                ref="headerRef"
+                :form-data="formData"
+                :variable-list="variableList"
+                :function-list="functionList"
+                :api-list="apiList"
+                @update="handleUpdate"
+            />
+            <h3 class="api-form-title">{{ $t('默认请求参数') }}</h3>
             <render-param
                 class="api-form"
                 ref="paramRef"
                 :form-data="formData"
+                :variable-list="variableList"
+                :function-list="functionList"
+                :api-list="apiList"
                 @update="handleUpdate"
             />
-            <h3 class="api-form-title">
-                默认请求响应
-                <bk-button
-                    class="api-response-button"
-                    size="small"
-                    :loading="isLoadingResponse"
-                    v-bk-tooltips="{
-                        content: '立即发送请求来获取请求响应，响应示例去除了数组中重复的部分。可以在响应结果字段提取中进行二次编辑'
-                    }"
-                    @click="getApiResponse"
-                >获取请求响应</bk-button>
-            </h3>
+            <h3 class="api-form-title">{{ $t('默认请求响应') }}</h3>
             <render-response
                 class="api-form"
                 ref="responseRef"
                 :form-data="formData"
                 :response="response"
+                :variable-list="variableList"
+                :function-list="functionList"
+                :api-list="apiList"
                 @update="handleUpdate"
-            />
+            >
+                <bk-button
+                    class="mt10 mr10"
+                    size="small"
+                    :loading="isLoadingResponse"
+                    v-bk-tooltips="{ content: $t('立即发送请求来获取请求响应，响应示例去除了数组中重复的部分，可以在响应结果字段提取中进行二次编辑'), maxWidth: 400 }"
+                    @click="getApiResponse"
+                >{{ $t('获取请求响应') }}</bk-button>
+            </render-response>
         </section>
         <section
             class="api-footer"
@@ -54,24 +66,24 @@
                 class="mr10"
                 :loading="isSubmitting"
                 @click="submitApi"
-            >提交</bk-button>
+            >{{ $t('提交') }}</bk-button>
             <bk-button
-                @click="confirmClose"
-            >取消</bk-button>
+                @click="handleClose"
+            >{{ $t('取消') }}</bk-button>
         </section>
-    </bk-sideslider>
+    </lc-sideslider>
 </template>
 
 <script>
     import RenderBasic from './basic.vue'
+    import RenderHeader from './header.vue'
     import RenderParam from './param.vue'
     import RenderResponse from './response.vue'
     import {
         defineComponent,
         ref,
         watch,
-        computed,
-        getCurrentInstance
+        computed
     } from '@vue/composition-api'
     import {
         parseScheme2Value,
@@ -83,10 +95,15 @@
     import {
         messageError
     } from '@/common/bkmagic'
+    import {
+        leaveConfirm
+    } from '@/common/leave-confirm'
+    // import useResource from '@/hooks/use-resource'
 
     export default defineComponent({
         components: {
             RenderBasic,
+            RenderHeader,
             RenderParam,
             RenderResponse
         },
@@ -108,16 +125,24 @@
         },
 
         setup (props, { emit }) {
+            // const {
+            //     getApiList,
+            //     getFunctionList,
+            //     getProjectVariableList
+            // } = useResource()
             // 状态
             const isSubmitting = ref(false)
             const isLoadingResponse = ref(false)
-            const formChanged = ref(false)
+            const variableList = ref([])
+            const functionList = ref([])
+            const apiList = ref([])
             const formData = ref({})
             const response = ref()
-            const instance = getCurrentInstance()
             const basicRef = ref(null)
+            const headerRef = ref(null)
             const paramRef = ref(null)
             const responseRef = ref(null)
+            
             // use data
             const store = useStore()
             const route = useRoute()
@@ -130,23 +155,16 @@
                 }
             })
 
-            // 方法
-            const confirmClose = () => {
-                if (formChanged.value) {
-                    instance.proxy.$bkInfo({
-                        title: '请确认是否关闭',
-                        subTitle: '存在未保存的 API，关闭后不会保存更改',
-                        confirmFn: handleClose
-                    })
-                } else {
-                    handleClose()
-                }
+            const close = () => {
+                emit('update:isShow', false)
+                emit('update:form', {})
             }
 
             const handleClose = () => {
-                formChanged.value = false
-                emit('update:isShow', false)
-                emit('update:form', {})
+                leaveConfirm(window.i18n.t('存在未保存的 API，关闭后不会保存更改'))
+                    .then(() => {
+                        close()
+                    })
             }
 
             const validate = () => {
@@ -154,6 +172,7 @@
                     Promise
                         .all([
                             basicRef.value?.validate(),
+                            headerRef.value?.validate(),
                             paramRef.value?.validate(),
                             responseRef.value?.validate()
                         ])
@@ -172,19 +191,22 @@
                 validate()
                     .then(([
                         basicData,
+                        headerData,
                         paramData,
                         responseData
                     ]) => {
                         const form = {
                             projectId: route.params.projectId,
                             ...basicData,
+                            ...headerData,
                             ...paramData,
                             ...responseData
                         }
                         const submitMethod = formData.value.id ? editApi : createApi
                         return submitMethod(form).then(() => {
+                            window.leaveConfirm = false
                             emit('success-submit')
-                            handleClose()
+                            close()
                         })
                     })
                     .finally(() => {
@@ -201,7 +223,7 @@
             }
 
             const handleUpdate = (formItem) => {
-                formChanged.value = true
+                window.leaveConfirm = true
                 Object.assign(formData.value, formItem)
             }
 
@@ -224,21 +246,33 @@
                 validate()
                     .then(([
                         basicData,
+                        headerData,
                         paramData
                     ]) => {
+                        // http data
                         let apiData = {}
                         if (paramKey.value === 'query') {
                             paramData.query.forEach((queryItem) => {
-                                apiData[queryItem.name] = parseScheme2Value(queryItem)
+                                if (queryItem.name) {
+                                    apiData[queryItem.name] = parseScheme2Value(queryItem)
+                                }
                             })
                         } else {
                             apiData = parseScheme2Value(paramData.body)
                         }
+                        // http header
+                        const header = headerData.header?.reduce?.((acc, cur) => {
+                            if (cur.name) {
+                                acc[cur.name] = parseScheme2Value(cur)
+                            }
+                            return acc
+                        }, {}) || {}
                         const httpData = {
                             url: basicData.url,
                             type: basicData.method,
                             apiData,
-                            withToken: basicData.withToken
+                            withToken: basicData.withToken,
+                            header
                         }
                         isLoadingResponse.value = true
                         return store
@@ -265,16 +299,32 @@
                 }
             )
 
+            // onBeforeMount(() => {
+            //     Promise.all([
+            //         getApiList(),
+            //         getFunctionList(),
+            //         getProjectVariableList()
+            //     ]).then(([api, fun, vars]) => {
+            //         apiList.value = api
+            //         functionList.value = fun
+            //         variableList.value = vars
+            //     })
+            // })
+
             return {
                 isSubmitting,
                 isLoadingResponse,
+                variableList,
+                functionList,
+                apiList,
                 formData,
                 response,
                 basicRef,
+                headerRef,
                 paramRef,
                 responseRef,
                 paramKey,
-                confirmClose,
+                close,
                 handleClose,
                 submitApi,
                 handleUpdate,
@@ -305,8 +355,5 @@
     }
     .api-footer {
         padding-left: 30px;
-    }
-    .api-response-button {
-        font-weight: normal;
     }
 </style>

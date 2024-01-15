@@ -10,7 +10,7 @@
                 :label="field.name"
                 :prop="field.key">
             </bk-table-column>
-            <bk-table-column label="操作" :min-width="150">
+            <bk-table-column :label="$t('操作')" :min-width="150">
                 <div class="table-cell-actions-btns">
                     <table-col-actions-edit></table-col-actions-edit>
                 </div>
@@ -19,10 +19,10 @@
                 <bk-table-setting-content ref="settingCol" v-show="false">
                 </bk-table-setting-content>
                 <div class="table-setting-wrapper">
-                    <h2 class="title">表格设置</h2>
+                    <h2 class="title">{{ $t('表格设置') }}</h2>
                     <div class="field-content-wrapper">
                         <template v-if="systemFields.length > 0">
-                            <p class="field-title">系统字段</p>
+                            <p class="field-title">{{ $t('系统字段') }}</p>
                             <bk-checkbox-group :value="selectedFieldKeys">
                                 <bk-checkbox
                                     v-for="item in systemFields"
@@ -33,7 +33,7 @@
                                 </bk-checkbox>
                             </bk-checkbox-group>
                         </template>
-                        <p class="field-title" style="margin-top: 6px;">自定义字段</p>
+                        <p class="field-title" style="margin-top: 6px;">{{ $t('自定义字段') }}</p>
                         <bk-checkbox-group v-if="fields.length > 0" :value="selectedFieldKeys">
                             <bk-checkbox
                                 v-for="item in fields"
@@ -43,11 +43,11 @@
                                 {{ item.name }}
                             </bk-checkbox>
                         </bk-checkbox-group>
-                        <bk-exception v-else type="empty" scene="part">暂无可展示字段，请在节点表单中配置</bk-exception>
+                        <bk-exception v-else type="empty" scene="part">{{ $t('暂无可展示字段，请在节点表单中配置') }}</bk-exception>
                     </div>
                     <div class="btn-area">
-                        <bk-button :theme="'primary'" @click="handleSelectConfirm">确定</bk-button>
-                        <bk-button :theme="'default'" @click="handleSelectCancel">取消</bk-button>
+                        <bk-button :theme="'primary'" @click="handleSelectConfirm">{{ $t('确定') }}</bk-button>
+                        <bk-button :theme="'default'" @click="handleSelectCancel">{{ $t('取消') }}</bk-button>
                     </div>
                 </div>
 
@@ -80,7 +80,6 @@
         },
         data () {
             return {
-                cols: this.tableConfig.slice(),
                 emptyData: [{}],
                 selectedFieldKeys: []
             }
@@ -88,11 +87,9 @@
         computed: {
             colFields () {
                 const list = []
-                this.cols.forEach(key => {
-                    let field = this.systemFields.find(item => item.key === key)
-                    if (!field) {
-                        field = this.fields.find(item => item.key === key)
-                    }
+                this.tableConfig.forEach(key => {
+                    const allFields = [...this.systemFields, ...this.fields]
+                    const field = allFields.find(item => item.key === key)
                     if (field) {
                         list.push(field)
                     }
@@ -101,19 +98,11 @@
             }
         },
         watch: {
-            fields (val) {
-                const selectedFieldKeys = []
-                this.tableConfig.forEach(key => {
-                    if (this.systemFields.find(field => field.key === key)
-                        || val.find(field => field.key === key)
-                    ) {
-                        selectedFieldKeys.push(key)
-                    }
-                })
-                this.selectedFieldKeys = selectedFieldKeys
-            },
-            tableConfig (val) {
-                this.cols = val.slice()
+            tableConfig: {
+                handler (val) {
+                    this.selectedFieldKeys = val.slice()
+                },
+                immediate: true
             }
         },
         methods: {
@@ -125,8 +114,7 @@
                 }
             },
             handleSelectConfirm () {
-                this.cols = [...this.selectedFieldKeys]
-                this.$emit('update', this.cols)
+                this.$emit('update', this.selectedFieldKeys)
                 this.$refs.settingCol.handleCancel()
             },
             handleSelectCancel () {
@@ -165,8 +153,8 @@
     padding: 0 24px;
     margin: 0;
     line-height: 28px;
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 16px;
+    font-weight: normal;
     color: #313238;
   }
   .field-content-wrapper {

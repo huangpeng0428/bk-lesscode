@@ -3,7 +3,7 @@
         <div class="header" v-if="!isComplexSide">{{ templateData.showName }}</div>
         <div class="main" :class="{ 'is-complex-side': isComplexSide }">
             <editor-prop
-                v-if="!isComplexSide && !isMobileLayout "
+                v-if="!isComplexSide && !isMobileLayout && !isVue3"
                 v-bind="templateData"
                 @on-change="handleChange" />
             <div ref="container" :class="{ 'container': true, 'is-complex': isComplexSide }">
@@ -21,17 +21,23 @@
     import RenderInfo from './info'
     import RenderMenu from './side-menu/index.tsx'
     import RenderTopMenu from './top-menu/index.tsx'
+    import RenderHelpMenu from './help-menu/index.tsx'
     import RenderComplexTop from './complex-top'
     import RenderComplexSide from './complex-side'
     import RenderMobileBottomMenu from './mobile-tab-bar'
+    import RenderMobileSideMenu from './mobile-side-menu'
+    import store from '@/store'
+    import LC from '@/element-materials/core'
 
     const panelComMap = {
         info: RenderInfo,
         menu: RenderMenu,
         topMenu: RenderTopMenu,
+        helpMenu: RenderHelpMenu,
         complexTop: RenderComplexTop,
         complexSide: RenderComplexSide,
-        mobileBottomMenu: RenderMobileBottomMenu
+        mobileBottomMenu: RenderMobileBottomMenu,
+        mobileSideMenu: RenderMobileSideMenu
     }
 
     export default {
@@ -56,11 +62,17 @@
                 return this.templateData.panelActive === 'complexSide'
             },
             isMobileLayout () {
-                return this.templateData.panelActive === 'mobileBottomMenu'
+                return ['mobileBottomMenu', 'mobileSideMenu'].includes(this.templateData.panelActive)
+            },
+            isVue3 () {
+                return store.getters['project/currentProject']?.framework === 'vue3'
             }
         },
         methods: {
             handleChange (field, value) {
+                // 画布中导航template修改，标记画布中的资源被更新
+                LC.triggerEventListener('updateCanvas', true)
+
                 bus.$emit('on-template-change', {
                     ...this.templateData,
                     [field]: value

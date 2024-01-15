@@ -4,7 +4,7 @@
             <div v-show="!pageLoading">
                 <div class="project-template">
                     <div class="page-head" style="align-items: center">
-                        <span style="font-size: 14px;font-weight: 700">应用模板</span>
+                        <span style="font-size: 14px;font-weight: 700">{{ $t('应用模板') }}</span>
                         <ul class="filter-links">
                             <li
                                 v-for="(link, index) in template.project.links"
@@ -17,7 +17,7 @@
                         <div class="extra">
                             <bk-input
                                 style="width: 400px"
-                                placeholder="请输入关键词"
+                                :placeholder="$t('请输入关键词')"
                                 :clearable="true"
                                 :right-icon="'bk-icon icon-search'"
                                 v-model="template.project.keyword"
@@ -32,58 +32,54 @@
                                 <div class="item-bd">
                                     <template>
                                         <div class="preview">
-                                            <page-preview-thumb alt="应用缩略预览" :project-id="project.id" :img-src="project.templateImg" />
+                                            <page-preview-thumb :alt="$t('应用缩略预览')" :project-id="project.id" :img-src="project.templateImg" />
                                         </div>
                                     </template>
                                     <div class="operate-btns">
-                                        <!-- <bk-button style="margin-left: 7px;width: 106px" theme="primary" @click="handleApply(project)">创建为新应用</bk-button>
-                                        <bk-button style="margin-left: 10px;width: 76px" @click="handlePreviewProject(project.id)">预览</bk-button>
-                                        <bk-button style="margin-left: 10px;width: 76px" @click="handleDownloadProject(project)">下载源码</bk-button> -->
                                         <auth-button
                                             theme="primary"
                                             auth="create_app_with_template"
                                             @click="handleApply(project)"
                                             style="margin-left: 7px;width: 106px"
+                                            v-enClass="'en-btn-title'"
+                                            :title="$t('创建为新应用')"
                                             :permission="iamNoResourcesPerm[$IAM_ACTION.create_app_with_template[0]]">
-                                            创建为新应用
-                                        </auth-button>
+                                            {{ $t('创建为新应用') }} </auth-button>
                                         <auth-button
                                             auth="preview_app_template"
                                             @click="handlePreviewProject(project.id)"
                                             style="margin-left: 10px;width: 76px"
                                             :permission="iamNoResourcesPerm[$IAM_ACTION.preview_app_template[0]]">
-                                            预览
-                                        </auth-button>
+                                            {{ $t('预览') }} </auth-button>
                                         <auth-button
                                             auth="download_app_template_source"
                                             @click="handleDownloadProject(project)"
                                             style="margin-left: 10px;width: 76px"
+                                            v-enClass="'en-btn-title'"
+                                            :title="$t('下载源码')"
                                             :permission="iamNoResourcesPerm[$IAM_ACTION.download_app_template_source[0]]">
-                                            下载源码
-                                        </auth-button>
+                                            {{ $t('下载源码') }} </auth-button>
                                     </div>
                                 </div>
                                 <div class="item-ft">
                                     <div class="col">
                                         <h3 class="name" :title="project.projectName">{{project.projectName}}</h3>
-                                        <div class="stat">{{`由 ${project.createUser || 'admin'} 上传`}}</div>
+                                        <div class="stat"> {{$t('由 {0} 上传',[project.createUser || 'admin'])}}</div>
+                                       
                                     </div>
+                                    <framework-tag class="framework-op" :framework="project.framework"></framework-tag>
                                 </div>
                                 <span class="favorite-btn">
                                     <i class="bk-icon icon-info-circle" v-bk-tooltips.top="{ content: project.projectDesc, allowHTML: false }"></i>
                                 </span>
                             </div>
                         </div>
-                        <div class="empty" v-show="!template.project.list.length">
-                            <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part">
-                                <div>暂无应用模板</div>
-                            </bk-exception>
-                        </div>
+                        <empty-status class="empty" v-show="!template.project.list.length" :type="projectEmptyType" @clearSearch="handlerClearSearchProject"></empty-status>
                     </div>
                 </div>
                 <div class="page-template">
                     <div class="page-head" style="align-items: center">
-                        <span style="font-size: 14px;font-weight: 700">页面模板</span>
+                        <span style="font-size: 14px;font-weight: 700">{{ $t('页面模板') }}</span>
                         <ul class="filter-links">
                             <li
                                 v-for="(link, index) in template.page.links"
@@ -96,7 +92,7 @@
                         <div class="extra">
                             <bk-input
                                 style="width: 400px"
-                                placeholder="请输入关键词"
+                                :placeholder="$t('请输入关键词')"
                                 :clearable="true"
                                 :right-icon="'bk-icon icon-search'"
                                 v-model="template.page.keyword"
@@ -111,35 +107,37 @@
                                 <div class="item-bd">
                                     <template>
                                         <div class="preview">
-                                            <img v-if="page.previewImg" :src="getPreviewImg(page.previewImg)" alt="应用缩略预览">
-                                            <div class="empty-preview-img" v-else>页面为空</div>
+                                            <img v-if="page.previewImg" :src="getPreviewImg(page.previewImg)" :alt="$t('应用缩略预览')">
+                                            <div class="empty-preview-img" v-else>{{ $t('页面为空') }}</div>
                                         </div>
                                     </template>
                                     <div class="operate-btns">
-                                        <bk-button style="margin-left: 17px;width: 86px" theme="primary" @click="handleAddToProject(page)">添加至应用</bk-button>
-                                        <bk-button style="margin-left: 10px;width: 76px" @click="handlePreviewTemplate(page)">预览</bk-button>
-                                        <bk-button style="margin-left: 10px;width: 76px" @click="handleDownloadTemplate(page)">下载源码</bk-button>
+                                        <bk-button style="margin-left: 17px;width: 86px" theme="primary" @click="handleAddToProject(page)">{{ $t('添加至应用') }}</bk-button>
+                                        <bk-button style="margin-left: 10px;width: 76px" @click="handlePreviewTemplate(page)">{{ $t('预览') }}</bk-button>
+                                        <bk-button style="margin-left: 10px;width: 76px" v-enClass="'en-btn-title'" :title="$t('下载源码')" @click="handleDownloadTemplate(page)">{{ $t('下载源码') }}</bk-button>
                                     </div>
                                 </div>
                                 <div class="item-ft">
                                     <div class="col">
-                                        <div class="page-name">
-                                            <span class="page-type">
-                                                <i v-if="page.templateType === 'MOBILE'" class="bk-drag-icon bk-drag-mobilephone"> </i>
-                                                <i v-else class="bk-drag-icon bk-drag-pc"> </i>
-                                            </span>
-                                            <div class="name" :title="page.templateName">{{page.templateName}}</div>
+                                        <div class="col-warp">
+                                            <div>
+                                                <div class="page-name">
+                                                    <span class="page-type">
+                                                        <i v-if="page.templateType === 'MOBILE'" class="bk-drag-icon bk-drag-mobilephone"> </i>
+                                                        <i v-else class="bk-drag-icon bk-drag-pc"> </i>
+                                                    </span>
+                                                    <div class="name" :title="page.templateName">{{page.templateName}}</div>
+                                            
+                                                </div>
+                                                <div class="stat">{{$t('由 {0} 上传',[page.createUser || 'admin'])}}</div>
+                                            </div>
+                                            <framework-tag class="framework-op" :framework="page.framework"></framework-tag>
                                         </div>
-                                        <div class="stat">{{`由 ${page.createUser || 'admin'} 上传`}}</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="empty" v-show="!template.page.list.length">
-                            <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part">
-                                <div>暂无页面模板</div>
-                            </bk-exception>
-                        </div>
+                        <empty-status class="empty" v-show="!template.page.list.length" :type="pageEmptyType" @clearSearch="handlerClearSearchPage"></empty-status>
                     </div>
                 </div>
             </div>
@@ -147,51 +145,12 @@
 
         <download-dialog ref="downloadDialog"></download-dialog>
 
-        <bk-dialog v-model="dialog.project.visible"
-            render-directive="if"
-            theme="primary"
-            :title="'应用模板'"
-            width="750"
-            :position="{ top: 100 }"
-            :mask-close="false"
-            :auto-close="false"
-            header-position="left"
-            ext-cls="project-create-dialog"
-            @value-change="handleProjectDialogToggle">
-            <div class="selected-project">已选模板：{{dialog.project.templateName}}</div>
-            <bk-form ref="createForm" :label-width="86" :rules="dialog.project.formRules" :model="dialog.project.formData">
-                <bk-form-item label="应用名称" required property="projectName" error-display-type="normal">
-                    <bk-input maxlength="60" v-model.trim="dialog.project.formData.projectName"
-                        placeholder="请输入应用名称，60个字符以内">
-                    </bk-input>
-                </bk-form-item>
-                <bk-form-item label="应用ID" required property="projectCode" error-display-type="normal">
-                    <bk-input maxlength="60" v-model.trim="dialog.project.formData.projectCode"
-                        placeholder="只能由小写字母组成，该ID将作为自定义组件前缀，创建后不可更改">
-                    </bk-input>
-                </bk-form-item>
-                <bk-form-item label="应用简介" required property="projectDesc" error-display-type="normal">
-                    <bk-input
-                        v-model.trim="dialog.project.formData.projectDesc"
-                        :type="'textarea'"
-                        :rows="3"
-                        :maxlength="100">
-                    </bk-input>
-                </bk-form-item>
-            </bk-form>
-            <div class="dialog-footer" slot="footer">
-                <bk-button
-                    theme="primary"
-                    :loading="dialog.project.loading"
-                    @click="handleCreateConfirm">确定</bk-button>
-                <bk-button @click="handleCreateCancel" :disabled="dialog.project.loading">取消</bk-button>
-            </div>
-        </bk-dialog>
+        <create-empty-project-dialog ref="createDialog" />
 
         <bk-dialog v-model="dialog.page.visible"
             render-directive="if"
             theme="primary"
-            :title="'应用模板'"
+            :title="$t('应用模板')"
             width="750"
             :position="{ top: 100 }"
             :mask-close="false"
@@ -199,13 +158,13 @@
             header-position="left"
             ext-cls="page-create-dialog"
             @value-change="handlePageDialogToggle">
-            <div class="selected-project">已选模板：{{dialog.page.curPage.templateName}}，添加至应用后，可以在画布中拖拽使用</div>
+            <div class="selected-project">{{ $t('已选模板：{0}，添加至应用后，可以在画布中拖拽使用', [dialog.page.curPage.templateName]) }}</div>
             <bk-form :label-width="86">
-                <bk-form-item label="应用" required :ext-cls="'selected-template-project'">
+                <bk-form-item :label="$t('应用')" required :ext-cls="'selected-template-project'">
                     <bk-select searchable
                         multiple
                         display-tag
-                        :placeholder="'请选择应用，可多选'"
+                        :placeholder="$t('请选择应用，可多选')"
                         v-model="dialog.page.formData.project"
                         :loading="dialog.page.selectLoading"
                         @change="handleSelectChange"
@@ -220,7 +179,7 @@
                 </bk-form-item>
             </bk-form>
             <template v-if="dialog.page.selectedList.length">
-                <div style="margin: 20px 0">请指定添加至对应应用的模板分类：</div>
+                <div style="margin: 20px 0">{{ $t('请指定添加至对应应用的模板分类：') }}</div>
                 <div style="min-height: 140px">
                     <bk-form ref="pageForm" :label-width="180">
                         <bk-form-item v-for="item in dialog.page.selectedList"
@@ -243,8 +202,8 @@
                 <bk-button
                     theme="primary"
                     @click="handlePageConfirm"
-                    :loading="dialog.page.loading">确定</bk-button>
-                <bk-button @click="handlePageCancel" :disabled="dialog.page.loading">取消</bk-button>
+                    :loading="dialog.page.loading">{{ $t('确定') }}</bk-button>
+                <bk-button @click="handlePageCancel" :disabled="dialog.page.loading">{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </main>
@@ -255,25 +214,26 @@
 
     import preivewErrImg from '@/images/preview-error.png'
     import DownloadDialog from './components/download-dialog'
+    import CreateEmptyProjectDialog from '@/views/system/components/create-empty-project-dialog'
     import PagePreviewThumb from '@/components/project/page-preview-thumb.vue'
     import { PROJECT_TEMPLATE_TYPE, PAGE_TEMPLATE_TYPE } from '@/common/constant'
     import { parseFuncAndVar } from '@/common/parse-function-var'
     import LC from '@/element-materials/core'
+    import frameworkTag from '@/components/framework-tag.vue'
+    import {
+        isMatchFramework
+    } from 'shared/util'
 
-    const PROJECT_TYPE_LIST = [{ id: '', name: '全部' }].concat(PROJECT_TEMPLATE_TYPE)
-    const PAGE_TYPE_LIST = [{ id: '', name: '全部' }].concat(PAGE_TEMPLATE_TYPE)
-    const defaultCreateFormData = {
-        projectName: '',
-        projectCode: '',
-        projectDesc: '',
-        copyFrom: null
-    }
+    const PROJECT_TYPE_LIST = [{ id: '', name: window.i18n.t('全部') }].concat(PROJECT_TEMPLATE_TYPE)
+    const PAGE_TYPE_LIST = [{ id: '', name: window.i18n.t('全部') }].concat(PAGE_TEMPLATE_TYPE)
 
     export default {
         name: 'template-market',
         components: {
+            CreateEmptyProjectDialog,
             DownloadDialog,
-            PagePreviewThumb
+            PagePreviewThumb,
+            frameworkTag
         },
         data () {
             return {
@@ -294,40 +254,6 @@
                 projectList: [],
                 pageList: [],
                 dialog: {
-                    project: {
-                        visible: false,
-                        loading: false,
-                        templateName: '',
-                        formData: { ...defaultCreateFormData },
-                        formRules: {
-                            projectName: [
-                                {
-                                    required: true,
-                                    message: '必填项',
-                                    trigger: 'blur'
-                                }
-                            ],
-                            projectCode: [
-                                {
-                                    required: true,
-                                    message: '必填项',
-                                    trigger: 'blur'
-                                },
-                                {
-                                    regex: /^[a-z]+$/,
-                                    message: '只能由小写字母组成',
-                                    trigger: 'blur'
-                                }
-                            ],
-                            projectDesc: [
-                                {
-                                    required: true,
-                                    message: '必填项',
-                                    trigger: 'blur'
-                                }
-                            ]
-                        }
-                    },
                     page: {
                         visible: false,
                         loading: false,
@@ -342,7 +268,7 @@
                             project: [
                                 {
                                     required: true,
-                                    message: '必填项',
+                                    message: window.i18n.t('必填项'),
                                     trigger: 'click'
                                 }
                             ]
@@ -350,7 +276,9 @@
                     }
                 },
                 pageLoading: false,
-                formLoading: false
+                formLoading: false,
+                projectEmptyType: 'noData',
+                pageEmptyType: 'noData'
             }
         },
         computed: {
@@ -379,7 +307,7 @@
                     const params = { filter: 'official', officialType: this.template.project.filter }
                     const [{ projectList }, pageTemplateList] = await Promise.all([
                         this.$store.dispatch('project/query', { config: { params } }),
-                        this.$store.dispatch('pageTemplate/list', { type: 'OFFCIAL' })
+                        this.$store.dispatch('pageTemplate/list', { type: 'OFFCIAL', framework: 'all' })
                     ])
                     this.projectList = projectList
                     this.pageList = pageTemplateList
@@ -391,31 +319,16 @@
                     this.pageLoading = false
                 }
             },
-            async handleCreateConfirm () {
-                try {
-                    await this.$refs.createForm.validate()
-                    const data = this.dialog.project.formData
-
-                    this.dialog.project.loading = true
-                    const projectId = await this.$store.dispatch('project/create', { data })
-
-                    this.messageSuccess('应用创建成功')
-                    this.dialog.project.visible = false
-
-                    setTimeout(() => {
-                        this.toPage(projectId)
-                    }, 300)
-                } catch (e) {
-                    console.error(e)
-                } finally {
-                    this.dialog.project.loading = false
-                }
-            },
             async getProjectList () {
                 this.selectLoading = true
                 try {
                     const { projectList } = await this.$store.dispatch('project/query', { config: {} })
-                    this.dialog.page.projectList.splice(0, this.dialog.page.projectList.length, ...projectList)
+                    // 过滤出符合框架的项目
+                    this.dialog.page.projectList.splice(
+                        0,
+                        this.dialog.page.projectList.length,
+                        ...projectList.filter(project => isMatchFramework(project.framework, this.dialog.page.curPage.framework))
+                    )
                 } catch (e) {
                     console.error(e)
                 } finally {
@@ -438,27 +351,40 @@
                     case 'project':
                         this.template.project.list.splice(0, this.template.project.list.length, ...this.projectList)
                         if (this.template.project.filter !== '') {
+                            this.projectEmptyType = 'search'
                             this.template.project.list = this.template.project.list.filter(item => {
                                 return item.offcialType && item.offcialType.includes(this.template.project.filter)
                             })
+                        } else {
+                            this.projectEmptyType = 'noData'
                         }
+                        
                         if (this.template.project.keyword !== '') {
+                            this.projectEmptyType = 'search'
                             this.template.project.list = this.template.project.list.filter(item => {
                                 return item.projectName.toUpperCase().includes(this.template.project.keyword.toUpperCase())
                             })
+                        } else {
+                            this.projectEmptyType = 'noData'
                         }
                         break
                     case 'page':
                         this.template.page.list.splice(0, this.template.page.list.length, ...this.pageList)
                         if (this.template.page.filter !== '') {
+                            this.pageEmptyType = 'search'
                             this.template.page.list = this.template.page.list.filter(item => {
                                 return item.offcialType && item.offcialType.includes(this.template.page.filter)
                             })
+                        } else {
+                            this.pageEmptyType = 'noData'
                         }
                         if (this.template.page.keyword !== '') {
+                            this.pageEmptyType = 'search'
                             this.template.page.list = this.template.page.list.filter(item => {
                                 return item.templateName.toUpperCase().includes(this.template.page.keyword.toUpperCase())
                             })
+                        } else {
+                            this.pageEmptyType = 'noData'
                         }
                         break
                     default:
@@ -488,26 +414,21 @@
                 return preivewErrImg
             },
             handleApply (project) {
-                defaultCreateFormData.copyFrom = project.id
-                defaultCreateFormData.projectName = ''
-                this.dialog.project.templateName = project.projectName
-                this.dialog.project.visible = true
+                this.$refs.createDialog.projectType = 'applyTemplate'
+                this.$refs.createDialog.formData.copyFrom = project.id
+                this.$refs.createDialog.formData.framework = project.framework || 'vue2'
+                this.$refs.createDialog.selectTemplateName = project.projectName
+                this.$refs.createDialog.visible = true
             },
             handleAddToProject (page) {
                 this.dialog.page.curPage = page
                 this.dialog.page.visible = true
-            },
-            handleProjectDialogToggle () {
-                this.dialog.project.formData = { ...defaultCreateFormData }
             },
             handlePageDialogToggle (val) {
                 if (val) {
                     this.getProjectList()
                     this.handleSelectClear()
                 }
-            },
-            handleCreateCancel () {
-                this.dialog.project.visible = false
             },
             handlePageCancel () {
                 this.dialog.page.visible = false
@@ -517,7 +438,7 @@
                 if (!this.dialog.page.selectedList.length) {
                     this.$bkMessage({
                         theme: 'error',
-                        message: '未选择应用'
+                        message: window.i18n.t('未选择应用')
                     })
                     return
                 }
@@ -571,7 +492,7 @@
                         this.dialog.page.formData.project.pop()
                         this.$bkMessage({
                             theme: 'warning',
-                            message: '模板已被该应用应用,无需重复添加'
+                            message: window.i18n.t('模板已被该应用应用,无需重复添加')
                         })
                     } else {
                         await this.getTemplateCategory(selected)
@@ -586,19 +507,11 @@
                     })
                 }
             },
-            toPage (projectId) {
-                this.$router.push({
-                    name: 'pageList',
-                    params: {
-                        projectId
-                    }
-                })
-            },
             handlePreviewProject (id) {
                 window.open(`/preview/project/${id}/`, '_blank')
             },
             handlePreviewTemplate (template) {
-                window.open(`/preview-template/project/${template.belongProjectId}/${template.id}`, '_blank')
+                window.open(`/preview-template/project/${template.belongProjectId}/${template.id}?framework=${template.framework}`, '_blank')
             },
             handleDownloadProject (project) {
                 this.$refs.downloadDialog.isShow = true
@@ -624,6 +537,12 @@
                     downlondEl.click()
                     document.body.removeChild(downlondEl)
                 })
+            },
+            handlerClearSearchProject (searchName) {
+                this.template.project.keyword = searchName
+            },
+            handlerClearSearchPage (searchName) {
+                this.template.page.keyword = searchName
             }
         }
     }
@@ -685,6 +604,16 @@
         }
         .page-item{
              margin: 0 14px 30px 0;
+             .col-warp{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                position: relative;
+                .framework-op{
+                    position: absolute;
+                    right: -30px;
+                }
+             }
         }
         .project-item, .page-item {
             position: relative;
@@ -717,6 +646,17 @@
                     top: 0;
                     left: 0;
                     height: 100%;
+                    .en-btn-title {
+                        /deep/ span {
+                                display: block;
+                                width: 100%;
+                                overflow: hidden;
+                                white-space: nowrap;
+                                text-overflow: ellipsis;
+                                text-align: center;
+                                padding: 0 2px;
+                            }
+                    }
                 }
                 .empty {
                     &::before {

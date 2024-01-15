@@ -61,8 +61,7 @@
         </vue-draggable>
         <span class="content-add" @click="handleAdd">
             <i class="bk-icon icon-plus-circle"></i>
-            添加
-        </span>
+            {{ $t('添加') }} </span>
     </section>
 </template>
 
@@ -70,7 +69,7 @@
     import {
         defineComponent,
         ref,
-        // watch,
+        watch,
         computed
     } from '@vue/composition-api'
     import Icon from '@/components/modifier/icon-select.vue'
@@ -147,6 +146,13 @@
                 optionList.value.push(currentConfig.value.generateFunc(optionList.value.length + 1))
                 trigger()
             }
+
+            watch(
+                () => props.slotVal.val,
+                () => {
+                    optionList.value = props.slotVal.val
+                }
+            )
 
             return {
                 optionList,

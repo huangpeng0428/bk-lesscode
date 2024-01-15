@@ -6,17 +6,17 @@
                     class="mr5"
                     theme="primary"
                     @click="showMarketFunc.isShow = true"
-                >新建函数</bk-button>
+                >{{ $t('新建函数') }}</bk-button>
                 <bk-button
                     class="mr5"
                     @click="importData.show = true"
-                >导入</bk-button>
+                >{{ $t('导入') }}</bk-button>
                 <bk-button
                     class="mr5"
                     @click="exportMarketFuncs"
-                >导出</bk-button>
+                >{{ $t('导出') }}</bk-button>
             </section>
-            <bk-input class="fun-search" right-icon="bk-icon icon-search" v-model="searchStr" clearable placeholder="函数关键字"></bk-input>
+            <bk-input class="fun-search" right-icon="bk-icon icon-search" v-model="searchStr" clearable :placeholder="$t('函数关键字')"></bk-input>
         </section>
 
         <section class="card-list" v-bkloading="{ isLoading }">
@@ -29,37 +29,32 @@
                 class="function-card"
                 @click.native="handleShowSource(card)">
                 <h3 class="card-title">{{ card.funcName }}</h3>
-                <p class="card-body" v-bk-overflow-tips>{{ card.funcSummary }}</p>
+                <p class="card-body" v-bk-overflow-tips>{{ $t(card.funcSummary) }}</p>
                 <bk-popconfirm
                     v-if="iamNoResourcesPerm[$IAM_ACTION.manage_function[0]]"
-                    content="确定删除该函数？"
+                    :content="$t('确定删除该函数？')"
                     width="280"
                     @confirm="handleDeleteFunc(card)">
                     <i class="bk-icon icon-close delete-card"></i>
                 </bk-popconfirm>
 
                 <div slot="footer" class="foot-main">
-                    <bk-button text class="foot-btn" @click.stop="handleShowSource(card)">查看源码</bk-button>
+                    <bk-button text class="foot-btn" v-enStyle="'flex:1.2'" @click.stop="handleShowSource(card)">{{ $t('查看源码') }}</bk-button>
                     <bk-divider direction="vertical"></bk-divider>
-                    <bk-button text class="foot-btn" @click.stop="handleShowAddFuncFromMarket(card)">添加至应用</bk-button>
+                    <bk-button text class="foot-btn" @click.stop="handleShowAddFuncFromMarket(card)">{{ $t('添加至应用') }}</bk-button>
                     <template v-if="iamNoResourcesPerm[$IAM_ACTION.manage_function[0]]">
                         <bk-divider direction="vertical"></bk-divider>
-                        <bk-button text class="foot-btn" @click.stop="handleShowEditFunc(card)">编辑</bk-button>
+                        <bk-button text class="foot-btn" @click.stop="handleShowEditFunc(card)">{{ $t('编辑') }}</bk-button>
                     </template>
                 </div>
             </bk-card>
-            <bk-exception class="exception-wrap-item" scene="part" type="empty" v-if="cardList.length <= 0">
-                暂无函数，
-                <bk-button :text="true" @click="showMarketFunc.isShow = true">
-                    立即创建
-                </bk-button>
-            </bk-exception>
         </section>
+        <empty-status v-if="computedCardList.length <= 0" :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
 
         <edit-market-func-sideslider
             :is-show.sync="showMarketFunc.isShow"
             :func-data.sync="showMarketFunc.func"
-            :title="showMarketFunc.func.id ? '编辑函数' : '新建函数'"
+            :title="showMarketFunc.func.id ? $t('编辑函数') : $t('新建函数')"
             :function-list="cardList"
             @refresh="getCardList"
         />
@@ -80,7 +75,7 @@
             :loading="importData.loading"
             @import="handleImport"
         >
-            <bk-button @click="exportDemoFunction">示例</bk-button>
+            <bk-button @click="exportDemoFunction">{{ $t('示例') }}</bk-button>
         </import-function-dialog>
     </article>
 </template>
@@ -130,9 +125,14 @@
             ...mapGetters(['iamNoResourcesPerm']),
             computedCardList () {
                 return this.cardList.filter(card => (card.funcName || '').includes(this.searchStr))
+            },
+            emptyType () {
+                if (this.searchStr?.length > 0) {
+                    return 'search'
+                }
+                return 'noData'
             }
         },
-
         created () {
             this.initData()
         },
@@ -161,7 +161,7 @@
 
             handleDeleteFunc (func) {
                 this.deleteFunction(func.id).then(() => {
-                    this.messageSuccess('删除成功')
+                    this.messageSuccess(window.i18n.t('删除成功'))
                     this.getCardList()
                 }).catch((err) => {
                     this.messageError(err.message || err)
@@ -186,7 +186,7 @@
             handleImport (funcList) {
                 try {
                     if (funcList.length <= 0) {
-                        throw new Error('JSON文件为空，暂无导入数据')
+                        throw new Error(window.i18n.t('JSON文件为空，暂无导入数据'))
                     }
                     this.importData.loading = true
                     this.bulkCreateFunction(funcList).then(() => {
@@ -211,7 +211,7 @@
                     'funcName': 'getApiData',
                     'funcParams': [],
                     'funcBody': 'const data = res.data || []\r\nreturn data\r\n',
-                    'funcSummary': '远程函数，获取数据',
+                    'funcSummary': window.i18n.t('远程函数，获取数据'),
                     'funcType': 1,
                     'funcMethod': 'get',
                     'withToken': 0,
@@ -226,6 +226,9 @@
 
             exportMarketFuncs () {
                 downloadFile(getExportFunction(this.cardList), 'bklesscode-market-func.json')
+            },
+            handlerClearSearch (searchName) {
+                this.searchStr = searchName
             }
         }
     }

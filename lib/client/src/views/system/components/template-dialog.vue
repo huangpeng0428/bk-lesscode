@@ -4,29 +4,49 @@
             render-directive="if"
             theme="primary"
             width="1080"
-            :position="{ top: 100 }"
             :mask-close="false"
             :auto-close="false"
             header-position="left"
             ext-cls="create-template-dialog"
             :close-icon="false"
             @value-change="handleDialogToggle">
-            <div slot="header">
-                <span slot="header">
-                    从模板新建应用
-                    <i class="bk-icon icon-info-circle" style="font-size: 14px;" v-bk-tooltips.top="{ content: '创建lesscode应用时，会同步在蓝鲸开发者中心创建应用的default模块' }"></i>
-                </span>
+            <div class="layout-form-info">
+                <div style="margin-bottom: 24px;" >
+                    <span class="title-style">
+                        {{ $t('新建应用') }}
+                        <i
+                            class="bk-icon icon-info-circle"
+                            style="font-size: 14px;"
+                            v-bk-tooltips.top="{ content: $t('创建lesscode应用时，会同步在蓝鲸开发者中心创建应用的default模块'), maxWidth: 400 }">
+                        </i>
+                    </span>
+                </div>
+                <div class="project-form-container">
+                    <project-form
+                        ref="projectForm"
+                        :type="createType"
+                        :default-layout-list="defaultLayoutList"
+                        :template-name="formData.templateName"
+                        :propsFormData="{ framework: formData.framework }">
+                    </project-form>
+                </div>
             </div>
-            <div class="layout-left">
-                <bk-input
-                    clearable
-                    :placeholder="'请输入模板名称'"
-                    :right-icon="'bk-icon icon-search'"
-                    :ext-cls="'search-input'"
-                    v-model="searchFilter"
-                    @enter="handleSearchEnter"
-                    @clear="handleSearchClear">
-                </bk-input>
+            <div class="layout-template">
+                <div class="template-header">
+                    <span class="title-style">
+                        {{ $t('应用模板') }}
+                    </span>
+                        <bk-input
+                        clearable
+                        :placeholder="$t('请输入模板名称')"
+                        :right-icon="'bk-icon icon-search'"
+                        :ext-cls="'search-input'"
+                        v-model="searchFilter"
+                        @enter="handleSearchEnter"
+                        @clear="handleSearchClear">
+                    </bk-input>
+                </div>
+                
                 <ul class="filter-links">
                     <li
                         v-for="link in filterLinks"
@@ -46,32 +66,28 @@
                                     <i class="bk-icon icon-check-1 checked-icon"></i>
                                 </div>
                                 <div class="layout-img">
-                                    <page-preview-thumb alt="模板缩略预览" :project-id="template.id" :img-src="template.templateImg" />
+                                    <page-preview-thumb :alt="$t('模板缩略预览')" :project-id="template.id" :img-src="template.templateImg" />
                                 </div>
                                 <div class="layout-name">
                                     <span class="template-name" :title="template.projectName">{{ template.projectName }}</span>
-                                    <span class="template-preview" @click.stop.prevent="handlePreview(template.id)">预览</span>
+                                    <span class="template-preview" @click.stop.prevent="handlePreview(template.id)">{{ $t('预览') }}</span>
                                 </div>
+                                <frameworkTag class="frameworkTag-op" :framework="template.framework"></frameworkTag>
                             </li>
                         </div>
                         <div class="empty" v-show="!list.length">
-                            <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part">
-                                <div>暂无应用模板</div>
-                            </bk-exception>
+                            <empty-status :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="layout-right">
-                <project-form ref="projectForm" type="templateProject" :template-name="formData.templateName"></project-form>
-            </div>
+            
             <div class="dialog-footer" slot="footer">
                 <bk-button
                     theme="primary"
                     :loading="loading"
-                    :disabled="!formData.copyFrom"
-                    @click="handleCreateConfirm">确定</bk-button>
-                <bk-button @click="handleDialogCancel" :disabled="loading">取消</bk-button>
+                    @click="handleCreateConfirm">{{ $t('确定') }}</bk-button>
+                <bk-button @click="handleDialogCancel" :disabled="loading">{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </section>
@@ -80,19 +96,23 @@
 <script>
     import ProjectForm from './project-form.vue'
     import PagePreviewThumb from '@/components/project/page-preview-thumb.vue'
+    import { bus } from '@/common/bus'
     import { PROJECT_TEMPLATE_TYPE } from '@/common/constant'
+    import frameworkTag from '@/components/framework-tag.vue'
 
     const defaultFormData = {
         templateName: '',
+        framework: 'vue2',
         copyFrom: null
     }
-    const projectTemplateType = [{ id: '', name: '全部' }].concat(PROJECT_TEMPLATE_TYPE)
+    const projectTemplateType = [{ id: '', name: window.i18n.t('全部') }].concat(PROJECT_TEMPLATE_TYPE)
 
     export default {
         name: 'template-dialog',
         components: {
             ProjectForm,
-            PagePreviewThumb
+            PagePreviewThumb,
+            frameworkTag
         },
         data () {
             return {
@@ -104,7 +124,20 @@
                 searchFilter: '',
                 templateList: [],
                 list: [],
-                pageLoading: false
+                pageLoading: false,
+                defaultLayoutList: [],
+                layoutFullList: []
+            }
+        },
+        computed: {
+            createType () {
+                return this.formData.copyFrom ? 'templateProject' : 'newProject'
+            },
+            emptyType () {
+                if (this.searchFilter.length > 0) {
+                    return 'search'
+                }
+                return 'noData'
             }
         },
         watch: {
@@ -113,6 +146,9 @@
                     this.handleSearchClear()
                 }
             }
+        },
+        created () {
+            this.getDefaultLayout()
         },
         methods: {
             async getTemplateList () {
@@ -133,19 +169,37 @@
             },
             async handleCreateConfirm () {
                 try {
-                    if (!this.formData.copyFrom) return
-                    const isValidate = await this.$refs.projectForm?.validate()
+                    // if (!this.formData.copyFrom) return
                     const data = this.$refs.projectForm?.formData || {}
-                    data.copyFrom = this.formData.copyFrom
+                    
+                    const isValidate = await this.$refs.projectForm?.validate()
+                    
                     if (isValidate) {
                         this.loading = true
+                        if (this.formData.copyFrom) {
+                            data.copyFrom = this.formData.copyFrom
+                        } else {
+                            const layouts = this.layoutFullList.filter(layout => layout.checked || layout.type === 'mobile-empty').map(layout => {
+                                return {
+                                    layoutId: layout.id,
+                                    routePath: layout.defaultPath,
+                                    isDefault: layout.isDefault,
+                                    showName: layout.defaultName,
+                                    layoutCode: layout.defaultCode,
+                                    content: layout.defaultContent,
+                                    layoutType: layout.layoutType
+                                }
+                            })
+                            data.layouts = layouts
+                        }
+                        
                         const projectId = await this.$store.dispatch('project/create', { data })
 
-                        this.messageSuccess('应用创建成功')
+                        this.messageSuccess(window.i18n.t('应用创建成功'))
                         this.isShow = false
 
                         setTimeout(() => {
-                            this.$emit('to-page', projectId)
+                            this.handleGotoPage(projectId)
                         }, 300)
                     }
                 } catch (e) {
@@ -153,6 +207,16 @@
                 } finally {
                     this.loading = false
                 }
+            },
+            handleGotoPage (projectId) {
+                bus.$emit('update-project-info')
+                // 开发应用和页面管理时调用跳到@/views/project/page-manage
+                this.$router.replace({
+                    name: 'pageList',
+                    params: {
+                        projectId
+                    }
+                })
             },
             handleClickFilter (link) {
                 this.filter = link
@@ -169,9 +233,11 @@
                 if (!template.checked) {
                     this.formData.templateName = ''
                     this.formData.copyFrom = null
+                    this.formData.framework = ''
                 } else {
                     this.formData.templateName = template.projectName
                     this.formData.copyFrom = template.id
+                    this.formData.framework = template.framework
                 }
             },
             handlePreview (id) {
@@ -196,6 +262,7 @@
                     } else {
                         this.formData.templateName = ''
                         this.formData.copyFrom = null
+                        this.formData.framework = ''
                     }
                 }
             },
@@ -209,7 +276,25 @@
                     this.formData = { ...defaultFormData }
                     this.getTemplateList()
                 }
-            }
+            },
+            handlerClearSearch (searchName) {
+                this.searchFilter = searchName
+            },
+            async getDefaultLayout () {
+                try {
+                    const layoutList = await this.$store.dispatch('layout/getPlatformList')
+                    layoutList.forEach(item => {
+                        const isEmptyType = ['empty', 'mobile-empty'].includes(item.type)
+                        item.isDefault = isEmptyType
+                        item.checked = isEmptyType
+                        item.disabled = isEmptyType
+                    })
+                    this.layoutFullList = layoutList
+                    this.defaultLayoutList = this.layoutFullList.filter(item => item.type !== 'mobile-empty')
+                } catch (e) {
+                    console.error(e)
+                }
+            },
         }
     }
 </script>
@@ -219,41 +304,70 @@
     @import "@/css/mixins/ellipsis";
 
     .create-template-dialog{
+        .bk-dialog {
+            top: 10%;
+        }
         .bk-dialog-tool{
             display: none;
         }
-        .bk-dialog-header{
-            position: absolute;
-            top: 30px;
-        }
-        .bk-dialog-body{
+        .bk-dialog-body {
             padding: 0;
-            height: 570px;
-            display:flex;
-            font-size:12px;
+            height: 80vh;
+            display: flex;
+            font-size: 12px;
 
-            .layout-left {
+            .title-style {
+                color: #313238;
+                font-size: 20px;
+            }
+
+            .layout-template {
                 width: 681px;
                 height: 100%;
                 opacity: 1;
                 background: #ffffff;
-                padding: 20px 0;
+                padding: 16px 24px 20px 16px;
 
-                .search-input {
-                    width: 300px;
-                    margin-left: calc(100% - 321px);
+                .template-header {
+                    display: flex;
+                    justify-content: space-between;
+                    .search-input {
+                        width: 300px;
+                    }
+                }
+
+                .filter-links {
+                    display: flex;
+                    align-items: center;
+                    margin-top: 24px;
+
+                    .link-item {
+                        padding: 4px 10px;
+                        margin-right: 10px;
+                        border-radius: 16px;
+                        cursor: pointer;
+
+                        &:hover {
+                            background: #E1ECFF;
+                        }
+
+                        &.active {
+                            background: #E1ECFF;
+                            color: #3A84FF;
+                        }
+                    }
                 }
 
                 .template-container{
                     width: 100%;
                     height: calc(100% - 72px);
-                    margin: 14px 0 0 18px;
+                    margin-top: 14px;
 
                     .template-container-wrapper{
-                        width: calc(100% - 20px);
+                        /* width: calc(100% - 20px); */
                         height: 100%;
                         overflow-y: auto;
-                        @mixin scroller;
+                        @mixin scroller #dcdee5 2px;
 
                         .empty{
                             margin-top: 100px;
@@ -368,38 +482,28 @@
                                 color: #3A84FF;
                             }
                         }
+                        .frameworkTag-op{
+                            position: absolute;
+                            top: 10px;
+                            right: 10px;
+                        }
                     }
                 }
             }
 
-            .layout-right {
+            .layout-form-info {
+                position: relative;
                 width: 399px;
                 height: 100%;
                 opacity: 1;
                 background: #ffffff;
                 border: 1px solid #dcdee5;
-                padding: 20px;
-            }
-        }
-
-        .filter-links {
-            display: flex;
-            align-items: center;
-            margin: 10px 0 0 10px;
-
-            .link-item {
-                padding: 6px 12px;
-                margin: 0 8px;
-                border-radius: 16px;
-                cursor: pointer;
-
-                &:hover {
-                    background: #E1ECFF;
-                }
-
-                &.active {
-                    background: #E1ECFF;
-                    color: #3A84FF;
+                padding: 16px 0 20px 24px;
+                .project-form-container {
+                    padding-right: 16px;
+                    height: calc(100% - 54px);
+                    overflow-y: auto;
+                    @mixin scroller #dcdee5, 2px;
                 }
             }
         }

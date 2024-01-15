@@ -35,24 +35,28 @@
                 class="debug-button"
                 :loading="isDebuging"
                 @click="handleDebug"
-            >{{ showDebugPanel ? '执行调试' : '打开调试' }}</bk-button>
+            >{{ showDebugPanel ? $t('执行调试') : $t('打开调试控制台') }}</bk-button>
             <i class="bk-drag-icon bk-drag-close-line" @click="handleCloseDebug"></i>
         </section>
         <monaco
             :value="renderCode"
             :height="height"
             :proposals="proposals"
+            :inline-proposals="inlineProposals"
             :model-markers="problems"
             :full-screen-ele="$el"
+            :options="{ quickSuggestions, tabSize: 4 }"
             ref="monaco"
             slot="main"
-            @change="change">
+            @change="handleMonacoChange"
+            @enter="handleMonacoEnter"
+        >
             <span
                 slot="title"
                 class="monaco-title"
-            >JS 编辑器</span>
+            >{{ $t('JS 编辑器') }}</span>
             <template v-slot:tools>
-                <i class="bk-drag-icon bk-drag-info-tips icon-style" v-bk-tooltips="functionTips"></i>
+                <i class="bk-drag-icon bk-drag-info-tips icon-style" :key="form.funcType" v-bk-tooltips="functionTips"></i>
                 <i class="bk-drag-icon bk-drag-fix icon-style" @click="handleFixMethod" v-bk-tooltips="fixMethodTips"></i>
                 <slot name="tools"></slot>
             </template>
@@ -87,6 +91,9 @@
         debounce,
         isEmpty
     } from 'shared/util'
+    import {
+        Ai
+    } from '@/common/ai'
 
     export default {
         components: {
@@ -131,30 +138,37 @@
         data () {
             return {
                 fixMethodTips: {
-                    content: '自动修复 ESLint 格式问题',
+                    content: this.$t('自动修复 ESLint 格式问题'),
                     appendTo: 'parent',
                     boundary: 'window',
                     theme: 'light',
                     placements: ['bottom-end']
                 },
                 multVal: {
-                    ...FUNCTION_TIPS
+                    ...(FUNCTION_TIPS())
                 },
                 proposals: [],
+                inlineProposals: [],
                 renderCode: '',
                 renderDebug: 'DebugOutput',
                 outputs: [],
                 problems: [],
                 params: [],
                 showDebugPanel: false,
-                isDebuging: false
+                isDebuging: false,
+                aiHelper: {},
+                quickSuggestions: {
+                    'other': true,
+                    'comments': true,
+                    'strings': true
+                }
             }
         },
 
         computed: {
             functionTips () {
                 return {
-                    content: `<pre class="function-tips">${this.tips || FUNCTION_TIPS[this.form.funcType]}</pre>`,
+                    content: `<pre class="function-tips">${this.tips || FUNCTION_TIPS()[this.form.funcType]}</pre>`,
                     appendTo: 'parent',
                     boundary: 'window',
                     width: this.tipWidth || 750,
@@ -165,9 +179,9 @@
             },
             computedPanels () {
                 return [
-                    { name: 'DebugOutput', label: '调试结果' },
-                    { name: 'DebugParam', label: '参数设置', count: this.params.length, tips: '参数设置后需重新执行方可生效' },
-                    { name: 'DebugProblem', label: '问题', count: this.problems.length, isError: true, tips: '点击右上角 <i class="bk-drag-icon bk-drag-fix" /> 图标自动修复 ESLint 问题' }
+                    { name: 'DebugOutput', label: this.$t('调试结果') },
+                    { name: 'DebugParam', label: this.$t('参数设置'), count: this.params.length, tips: this.$t('参数设置后需重新执行方可生效') },
+                    { name: 'DebugProblem', label: this.$t('问题'), count: this.problems.length, isError: true, tips: this.$t('点击右上角') + '<i class="bk-drag-icon bk-drag-fix" />' + this.$t('图标自动修复 ESLint 问题') }
                 ]
             }
         },
@@ -194,13 +208,21 @@
             'form.funcParams': {
                 handler (val, oldVal) {
                     if (JSON.stringify(val) !== JSON.stringify(oldVal)) {
-                        this.params = val.map((key) => ({ key, value: '', format: 'value' }))
+                        this.params = val.map((key) => {
+                            const param = this.params.find(param => param.key === key)
+                            return {
+                                key,
+                                value: param?.value || '',
+                                format: 'value'
+                            }
+                        })
                     }
                 },
                 immediate: true
             },
             'form.id' () {
                 this.outputs = []
+                this.params = this.form.funcParams.map((key) => ({ key, value: '', format: 'value' }))
             }
         },
 
@@ -208,6 +230,10 @@
             this.initMultVal()
             this.initProposals()
             this.debounceCheckEslint = debounce(this.checkEslint, 500)
+            this.debounceCodeAI = debounce(this.codeAI, 300)
+            this.aiHelper = new Ai({
+                handleMessage: this.handleMessage
+            })
         },
 
         methods: {
@@ -215,7 +241,7 @@
 
             initMultVal (func = this.form) {
                 this.multVal = {
-                    ...FUNCTION_TIPS,
+                    ...FUNCTION_TIPS(),
                     [func.funcType]: func.funcBody
                 }
                 this.renderCode = this.multVal[this.form.funcType]
@@ -274,14 +300,14 @@
                                 this.proposals.push({
                                     label: `lesscode.${node.componentId}.${propKey}`,
                                     kind: window.monaco.languages.CompletionItemKind.Property,
-                                    documentation: `组件【${node.componentId}】的【${propKey}】属性的内置变量`,
+                                    documentation: this.$t('组件【{0}】的【{1}】属性的内置变量', [node.componentId, propKey]),
                                     insertText: `this.${perVariableName}`
                                 })
                             } else {
                                 this.proposals.push({
                                     label: `lesscode.${node.componentId}.${propKey}`,
                                     kind: window.monaco.languages.CompletionItemKind.Property,
-                                    documentation: `组件【${node.componentId}】的【${propKey}】属性的内置变量`,
+                                    documentation: this.$t('组件【{0}】的【{1}】属性的内置变量', [node.componentId, propKey]),
                                     insertText: `this.${perVariableName}${camelCase(propKey, { transform: camelCaseTransformMerge })}`
                                 })
                             }
@@ -293,7 +319,7 @@
                             this.proposals.push({
                                 label: `lesscode.${node.componentId}.${propKey}.count`,
                                 kind: window.monaco.languages.CompletionItemKind.Property,
-                                documentation: `组件【${node.componentId}】的【${propKey}.count】属性的内置变量`,
+                                documentation: this.$t('组件【{0}】的【{1}.count】属性的内置变量', [node.componentId, propKey]),
                                 insertText: `this.${perVariableName}paginationCount`
                             })
                         }
@@ -308,7 +334,7 @@
                             this.proposals.push({
                                 label: `lesscode.${node.componentId}.${config.displayName}`,
                                 kind: window.monaco.languages.CompletionItemKind.Property,
-                                documentation: `组件【${node.componentId}】的【${config.displayName}】的内置变量`,
+                                documentation: this.$t('组件【{0}】的【{1}】的内置变量', [node.componentId, config.displayName]),
                                 insertText: `this.${perVariableName}Slot${slotKey}`
                             })
                         }
@@ -318,22 +344,22 @@
                 recTree(LC.getRoot())
                 // 组装提示数据
                 const sourceNameMap = {
-                    prop: '属性',
-                    event: '事件',
-                    slot: '内容配置'
+                    prop: this.$t('属性'),
+                    event: this.$t('事件'),
+                    slot: this.$t('内容配置')
                 }
                 this.functionList.forEach((functionData) => {
                     const usageArray = relatedMethodCodeMap[functionData.funcCode] || []
                     let documentation = ''
                     // 函数简介
                     if (functionData.funcSummary) {
-                        documentation = '函数简介：\n' + functionData.funcSummary + '\n'
+                        documentation = this.$t('函数简介：') + '\n' + functionData.funcSummary + '\n'
                     }
                     // 函数使用情况
                     if (usageArray.length) {
-                        documentation = '函数使用情况：\n' + documentation
+                        documentation = this.$t('函数使用情况：') + '\n' + documentation
                         usageArray.forEach((usage) => {
-                            documentation += `组件ID【${usage.componentId}】的【${usage.key}】【${sourceNameMap[usage.source] || usage.source}】\n`
+                            documentation += `${this.$t('组件ID【{0}】的【{1}】', [usage.componentId, usage.key])}【${sourceNameMap[usage.source] || usage.source}】\n`
                         })
                     }
                     this.proposals.push({
@@ -348,13 +374,13 @@
                     let documentation = ''
                     // 变量简介
                     if (variableData.description) {
-                        documentation = '变量简介：\n' + variableData.description + '\n'
+                        documentation = this.$t('变量简介：') + '\n' + variableData.description + '\n'
                     }
                     // 变量使用情况
                     if (usageArray.length) {
-                        documentation = '变量使用情况：\n' + documentation
+                        documentation = this.$t('变量使用情况：') + '\n' + documentation
                         usageArray.forEach((usage) => {
-                            documentation += `组件ID【${usage.componentId}】的【${usage.key}】【${sourceNameMap[usage.source] || usage.source}】\n`
+                            documentation += `${this.$t('组件ID【{0}】的【{1}】', [usage.componentId, usage.key])}【${sourceNameMap[usage.source] || usage.source}】\n`
                         })
                     }
                     this.proposals.push({
@@ -370,7 +396,7 @@
                 this
                     .fixMethod()
                     .then(() => {
-                        this.messageSuccess('函数修复成功')
+                        this.messageSuccess(this.$t('函数修复成功'))
                     })
                     .catch((err) => {
                         if (err?.code === 499) {
@@ -391,7 +417,7 @@
                             this.change(code)
                             resolve()
                         } else {
-                            reject(new CustomError(501, '暂无可修复内容'))
+                            reject(new CustomError(501, this.$t('暂无可修复内容')))
                         }
                     }).catch((err) => {
                         reject(err)
@@ -412,6 +438,110 @@
                     .then((res) => {
                         this.problems = res.data
                     })
+            },
+
+            handleMonacoChange (funcBody) {
+                // 立即清空上一次的 code ai
+                this.inlineProposals = []
+                // 先改变值
+                this.change(funcBody)
+
+                const editorRef = this.$refs.monaco.getMonaco()
+                const position = editorRef.getPosition()
+                const model = editorRef.getModel()
+                const currentLine = model.getLineContent(position.lineNumber).slice(0, position.column)
+
+                // 修改提示方式
+                if (currentLine !== '') {
+                    this.quickSuggestions = {
+                        'other': true,
+                        'comments': true,
+                        'strings': true
+                    }
+                } else {
+                    this.quickSuggestions = {
+                        'other': 'inline',
+                        'comments': 'inline',
+                        'strings': 'inline'
+                    }
+                }
+                // code ai
+                this.aiHelper.stop()
+            },
+
+            handleMonacoEnter () {
+                // code ai
+                this.aiHelper.stop()
+                this.debounceCodeAI(this.form.funcBody)
+            },
+
+            getCode () {
+                let blinkBefore = ''
+                // // 生成函数和变量上下文
+                // blinkBefore += '// You need to write the content of the function at the bottom.\n'
+                // blinkBefore += '// You can use other functions in the form of lesscode[\'${func:functionName}\']()\n'
+                // blinkBefore += '// You can use other variables in the form of lesscode[\'${prop:variableName}\'].\n'
+
+                // const functionContentMap = this.functionList.reduce((acc, cur) => {
+                //     acc[`\${func:${cur.funcCode}}`] = getMethodBody(cur).replace(/\/\*[\s\S]*?\*\/(\r\n)?/, '')
+                //     return acc
+                // }, {})
+
+                // const variableContentMap = this.variableList.reduce((acc, cur) => {
+                //     acc[`\${prop:${cur.variableCode}}`] = getVariableValue(cur)
+                //     return acc
+                // }, {})
+
+                // blinkBefore += `const lesscode = ${JSON.stringify({ ...functionContentMap, ...variableContentMap }, null, 2)}`
+
+                // 构造当前函数上下文
+                // blinkBefore += `const ${this.form.funcName} = (${(this.form.funcParams || []).join(', ')}) = {\n`
+                // 获取编辑器上下文
+                const editorRef = this.$refs.monaco.getMonaco()
+                const position = editorRef.getPosition()
+                const model = editorRef.getModel()
+                for (let index = 1; index < position.lineNumber; index++) {
+                    blinkBefore += (model.getLineContent(index) + '\r\n')
+                }
+                blinkBefore += model.getLineContent(position.lineNumber).slice(0, position.column)
+                const blinkAfter = this.renderCode.slice(blinkBefore.length)
+                return {
+                    blinkBefore,
+                    blinkAfter
+                }
+            },
+
+            codeAI () {
+                if (!this.renderCode) return
+
+                const { blinkBefore, blinkAfter } = this.getCode()
+                this.aiHelper.code(blinkBefore, blinkAfter, 'javascript')
+            },
+
+            handleMessage (aiMessage, content) {
+                // 保留完整行
+                const splitContents = content.split(/\r?\n/gm)
+                if (splitContents.length > 1) {
+                    splitContents.splice(splitContents.length - 1, 1)
+                }
+                const completeContent = splitContents.join('\n')
+                // 设置数据
+                const editorRef = this.$refs.monaco.getMonaco()
+                const position = editorRef.getPosition()
+                const lineContent = editorRef.getModel().getLineContent(position.lineNumber)
+                const filterText = lineContent.slice(0, position.column).split(/\s/g).at(-1)
+                let insertText = filterText + completeContent
+                while (/^[\[\]\<\>\.\{\}\@\#\;\*\+\-\/\%\^\&\(\)\'\"\?\,\`\~\!]/.test(insertText)
+                    && /^[\[\]\<\>\.\{\}\@\#\;\*\+\-\/\%\^\&\(\)\'\"\?\,\`\~\!]/.test(filterText)) {
+                    insertText = insertText.slice(1)
+                }
+                this.inlineProposals.splice(0, this.inlineProposals.length, {
+                    filterText,
+                    insertText
+                })
+                this.$nextTick(() => {
+                    editorRef.trigger('inlineSuggest.trigger', 'editor.action.inlineSuggest.trigger')
+                })
             },
 
             change (funcBody) {
@@ -443,14 +573,14 @@
                     return
                 }
                 if (isEmpty(this.form.funcName)) {
-                    this.messageError('函数名称不能为空')
+                    this.messageError(this.$t('函数名称不能为空'))
                     return
                 }
                 this.renderDebug = 'DebugOutput'
                 this.outputs = []
                 this.isDebuging = true
                 // 收集方法
-                const collectOutput = (type, content) => {
+                const collectOutput = (type, contents) => {
                     const iconMap = {
                         info: 'bk-icon icon-angle-right-line',
                         output: 'bk-icon icon-angle-left-line',
@@ -458,7 +588,7 @@
                     }
                     this.outputs.push({
                         icon: iconMap[type],
-                        content
+                        contents
                     })
                 }
                 try {
@@ -491,6 +621,7 @@
                         {
                             $store: this.$store,
                             $http: this.$http,
+                            $bkMessage: this.$bkMessage,
                             console: {
                                 log (...args) {
                                     console.log(...args)
@@ -508,13 +639,14 @@
                                     collectOutput('error', args)
                                 }
                             }
-                        }
+                        },
+                        true
                     )
                     // 收集返回值
-                    collectOutput('output', content || 'undefined')
+                    collectOutput('output', [content || 'undefined'])
                 } catch (error) {
                     // 收集错误信息
-                    collectOutput('error', error.message || error)
+                    collectOutput('error', [error.message || error])
                 } finally {
                     this.isDebuging = false
                 }

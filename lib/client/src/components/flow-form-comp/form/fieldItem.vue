@@ -1,4 +1,5 @@
 <template>
+    <!-- 渲染具体的组件内容 -->
     <div :class="['field-form-item', { 'half-row': field.layout === 'COL_6' }]">
         <div
             v-if="showLabel && !['DESC','DIVIDER'].includes(field.type)"
@@ -10,6 +11,7 @@
         <div class="field-form-content">
             <template v-if="fieldComp">
                 <component
+                    allow-edit
                     :is="fieldComp"
                     :field="field"
                     :disabled="isDisabled"
@@ -19,13 +21,13 @@
                     @change="$emit('change', $event)">
                 </component>
             </template>
-            <span v-else style="font-size: 12px; color: #c3cdd7;">找不到该类型控件，请删除字段</span>
+            <span v-else style="font-size: 12px; color: #c3cdd7;">{{ $t('找不到该类型控件，请删除字段') }}</span>
         </div>
     </div>
 </template>
 <script>
-    import { deepClone } from './util/index.js'
-    import { FIELDS_TYPES } from './constants/forms.js'
+    import { deepClone, getComBaseDefault } from './util/index.js'
+    import { FIELDS_TYPES } from 'shared/no-code/index.js'
     import AutoNumber from './fields/autoNumber.vue'
     import Checkbox from './fields/checkbox.vue'
     import CustomForm from './fields/customForm.vue'
@@ -50,7 +52,10 @@
     import Tree from './fields/tree.vue'
     import Upload from './fields/upload.vue'
     import Divider from './fields/divider'
-
+    import Rate from './fields/rate'
+    import Compute from './fields/compute'
+    import Serial from './fields/serial.vue'
+    
     // 注册fields文件夹下所有字段类型组件
     // function registerField() {
     //   const fields = require.context('./fields/', false, /\w+\.(vue)$/);
@@ -89,7 +94,10 @@
             Textarea: Textarea,
             Tree: Tree,
             Upload: Upload,
-            Divider: Divider
+            Divider: Divider,
+            Rate: Rate,
+            Compute,
+            Serial
         },
         props: {
             field: {
@@ -99,7 +107,7 @@
             value: {
                 type: [String, Number, Boolean, Array],
                 default () {
-                    return deepClone(FIELDS_TYPES.find(item => item.type === this.field.type)?.default || '')
+                    return deepClone(getComBaseDefault(FIELDS_TYPES(), this.field.type))
                 }
             },
             showLabel: {
@@ -117,22 +125,19 @@
         },
         computed: {
             fieldComp () {
-                return FIELDS_TYPES.find(item => item.type === this.field.type)?.comp || ''
+                return FIELDS_TYPES().find(item => item.type === this.field.type)?.comp || ''
             },
             // 默认规则设置为禁止填写 和 字段设置为禁止编辑的时候禁止编辑
             isDisabled () {
-                return this.field.is_readonly
+                return this.field.is_readonly || this.disabled
             },
             needPagination () {
                 return this.$route.name !== 'editNocode'
+            },
+            comValue () {
+                return (this.field.type === 'RATE' && this.value) ? JSON.parse(this.value).value : this.value
             }
         }
-        // beforeCreate() {
-        //   const fields = registerField();
-        //   Object.keys(fields).forEach((item) => {
-        //     this.$options.components[item] = fields[item];
-        //   });
-        // },
     }
 </script>
 <style lang="postcss" scoped>

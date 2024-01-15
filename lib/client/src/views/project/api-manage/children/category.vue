@@ -3,7 +3,7 @@
         <h3 class="list-head">
             <bk-input
                 class="head-input"
-                placeholder="请输入"
+                :placeholder="$t('请输入')"
                 right-icon="bk-icon icon-search"
                 clearable
                 v-model="searchCategoryString"
@@ -20,7 +20,7 @@
                 <div slot="content">
                     <bk-input
                         class="add-api-category"
-                        placeholder="请输入 API 分类，多个分类 / 分隔，回车保存"
+                        :placeholder="$t('请输入 API 分类，多个分类 / 分隔，回车保存')"
                         right-icon="loading"
                         ref="addCategoryInput"
                         v-bkloading="{
@@ -30,7 +30,7 @@
                         @enter="handleCreateCategory"
                     ></bk-input>
                 </div>
-                <i class="bk-icon icon-plus" v-bk-tooltips.top="'添加分类'"></i>
+                <i class="bk-drag-icon bk-drag-crosshair" v-bk-tooltips.top="$t('添加分类')"></i>
             </bk-popconfirm>
         </h3>
 
@@ -65,7 +65,7 @@
                             'show-tool-name': category.showChange
                         }
                     ]"
-                    :title="category.name"
+                    v-tooltips="category.name"
                 >{{ category.name }}</span>
                 <bk-popconfirm
                     trigger="click"
@@ -79,7 +79,7 @@
                 >
                     <div slot="content">
                         <bk-input
-                            placeholder="请输入 API 分类"
+                            :placeholder="$t('请输入 API 分类')"
                             :class="['add-api-category']"
                             :ref="category.id"
                             v-model="category.tempName"
@@ -115,21 +115,14 @@
                     {{ category.apiCount }}
                 </span>
             </li>
-            <bk-exception
-                class="exception-wrap-item exception-part"
-                type="empty"
-                scene="part"
-                v-if="renderCategoryList.length <= 0"
-            >
-                <div>暂无数据</div>
-            </bk-exception>
+            <empty-status v-if="renderCategoryList.length <= 0" :type="emptyType" @clearSearch="handlerClearSearch" :part="false"></empty-status>
         </vue-draggable>
 
         <bk-dialog v-model="delObj.show"
             render-directive="if"
             theme="primary"
             ext-cls="delete-dialog-wrapper"
-            title="确定删除？"
+            :title="$t('确定删除？')"
             width="400"
             footer-position="center"
             :mask-close="false"
@@ -140,8 +133,8 @@
                 <bk-button
                     theme="danger"
                     :loading="delObj.loading"
-                    @click="confirmDeleteCategory">删除</bk-button>
-                <bk-button @click="delObj.show = false" :disabled="delObj.loading">取消</bk-button>
+                    @click="confirmDeleteCategory">{{ $t('删除') }}</bk-button>
+                <bk-button @click="delObj.show = false" :disabled="delObj.loading">{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </section>
@@ -176,6 +169,12 @@
 
             projectId () {
                 return parseInt(this.$route.params.projectId)
+            },
+            emptyType () {
+                if (this.searchCategoryString?.trim()?.length) {
+                    return 'search'
+                }
+                return 'noData'
             }
         },
 
@@ -243,7 +242,7 @@
                 if (category.apiCount > 0) {
                     return {
                         hasPermission: false,
-                        message: '该分类下有Api，不能删除'
+                        message: window.i18n.t('该分类下有Api，不能删除')
                     }
                 }
 
@@ -277,7 +276,7 @@
                         }]
                     }).then(() => {
                         this.clickEmptyArea()
-                        this.messageSuccess('修改成功')
+                        this.messageSuccess(window.i18n.t('修改成功'))
                         this.initData()
                     }).finally(() => {
                         this.isCreatingCategory = false
@@ -292,7 +291,7 @@
 
                 this.delObj.show = true
                 this.delObj.id = category.id
-                this.delObj.nameTips = `删除分类（${category.name}）`
+                this.delObj.nameTips = window.i18n.t('删除分类（{0}）', [category.name])
             },
 
             confirmDeleteCategory () {
@@ -300,7 +299,7 @@
                 this.deleteCategory({
                     id: this.delObj.id
                 }).then(() => {
-                    this.messageSuccess('删除成功')
+                    this.messageSuccess(window.i18n.t('删除成功'))
                     this.initData()
                     this.delObj.show = false
                 }).finally(() => {
@@ -318,7 +317,7 @@
                     return this.createCategory(postData).then((res) => {
                         this.newCategoryName = ''
                         this.clickEmptyArea()
-                        this.messageSuccess('添加成功')
+                        this.messageSuccess(window.i18n.t('添加成功'))
                         this.initData()
                     }).finally(() => {
                         this.isCreatingCategory = false
@@ -338,11 +337,11 @@
                         else nameNum[name] = 1
                     })
                     if (hasRepeatName) {
-                        reject(new Error('不能创建相同名字的分类'))
+                        reject(new Error(window.i18n.t('不能创建相同名字的分类')))
                     } else if (nameList.some(x => x === '')) {
-                        reject(new Error('分类名不能为空'))
+                        reject(new Error(window.i18n.t('分类名不能为空')))
                     } else if (this.categoryList.find(category => nameList.includes(category.name))) {
-                        reject(new Error('分类名重复，请修改后重试'))
+                        reject(new Error(window.i18n.t('分类名重复，请修改后重试')))
                     } else {
                         resolve()
                     }
@@ -360,6 +359,10 @@
                 setTimeout(() => {
                     this.$refs[refName]?.$refs?.input?.focus()
                 }, 0)
+            },
+            handlerClearSearch (searchName) {
+                this.searchCategoryString = searchName
+                this.handerSearchCategory()
             }
         }
     }
@@ -486,7 +489,7 @@
         align-items: center;
         font-weight: normal;
         margin: 0;
-        padding: 16px 13px 15px 18px;
+        padding: 16px 13px 15px 16px;
         .head-input {
             margin-right: 7px;
         }
@@ -501,7 +504,7 @@
 
     .category-list {
         height: calc(100% - 63px);
-        overflow-y: auto;
+        /* overflow-y: auto; */
         .exception-wrap-item {
             position: absolute;
             top: 50%;

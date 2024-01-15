@@ -2,14 +2,15 @@
     <div class="item">
         <div
             class="item-text"
+            v-enStyle="'white-space: nowrap'"
             v-bk-tooltips="{
                 placement: 'bottom',
                 content: item.tips,
-                disabled: !item.tips
+                disabled: !item.tips,
+                hideOnClick: false
             }"
             @click="item.func">
             <i :class="item.icon"></i>
-            <span>{{item.text}}</span>
         </div>
         <slot />
     </div>
@@ -30,23 +31,18 @@
         font-size: 12px;
         height: 100%;
         cursor: pointer;
-        &:hover,
-        &.active {
+        &:hover {
             background-color: #e1ecff;
             color: #3a84ff;
-        }
-        & ~ .item{
-            margin-left: 10px;
         }
         .item-text{
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            min-width: 60px;
+            width: 52px;
             i {
                 font-size: 16px;
-                margin-bottom: 5px;
             }
         }
     }

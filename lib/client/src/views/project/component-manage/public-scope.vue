@@ -2,39 +2,59 @@
     <bk-dialog
         :render-directive="'if'"
         :class="$style['public-scope-dialog']"
-        title="公开范围设置"
+        :title="$t('公开范围设置')"
         :value="isShow"
         @cancel="handleCancel"
         :mask-close="false"
         :width="700"
         header-position="left">
-        <div :class="{ 'scope-specify': scope === ScopeValue.Specify }">
-            <bk-radio-group v-model="scope" class="scope-radio-group">
-                <bk-radio :value="ScopeValue.Self">仅本应用</bk-radio>
-                <bk-radio :value="ScopeValue.Specify">特定应用</bk-radio>
-                <bk-radio :value="ScopeValue.All">所有应用，包含后续新增</bk-radio>
-            </bk-radio-group>
-            <div class="scope-transfer-wrapper" v-if="scope === ScopeValue.Specify">
-                <bk-transfer
-                    :target-list="selectedProjetList"
-                    :source-list="sourceProjectList"
-                    v-bind="transfer"
-                    :sortable="true"
-                    @change="handleChange">
-                </bk-transfer>
-            </div>
+        <div :class="{ 'scope-specify': scope === ScopeValue.Specify, 'scope-all': scope === ScopeValue.All }">
+            <bk-form form-type="vertical">
+                <bk-form-item label="公开范围">
+                    <bk-radio-group v-model="scope" class="scope-radio-group" v-enClass="'en-scope-radio-group'">
+                        <bk-radio :value="ScopeValue.Self">{{ $t('仅本应用') }}</bk-radio>
+                        <bk-radio :value="ScopeValue.Specify">{{ $t('特定应用') }}</bk-radio>
+                        <bk-radio :value="ScopeValue.All">{{ $t('所有应用，包含后续新增') }}</bk-radio>
+                    </bk-radio-group>
+                </bk-form-item>
+                <div class="scope-transfer-wrapper" v-if="scope === ScopeValue.Specify">
+                    <bk-transfer
+                        :target-list="selectedProjetList"
+                        :source-list="sourceProjectList"
+                        v-bind="transfer"
+                        :sortable="true"
+                        @change="handleChange">
+                    </bk-transfer>
+                </div>
+                <bk-form-item label="公开至分类" v-if="scope === ScopeValue.Specify || scope === ScopeValue.All" :required="true">
+                    <bk-select v-model="publicType" :clearable="false">
+                        <bk-option v-for="customComps in publicTypeList"
+                            :key="customComps.id"
+                            :id="customComps.id"
+                            :name="customComps.name">
+                        </bk-option>
+                    </bk-select>
+                </bk-form-item>
+            </bk-form>
         </div>
         <div slot="footer">
             <bk-button
                 theme="primary"
                 :disabled="dialog.disabled"
                 :loading="dialog.loading"
-                @click="handleConfirm">确定</bk-button>
-            <bk-button @click="handleCancel" :disabled="dialog.loading" style="margin-left: 8px">取消</bk-button>
+                @click="handleConfirm">{{ $t('确定') }}</bk-button>
+            <bk-button @click="handleCancel" :disabled="dialog.loading" style="margin-left: 8px">{{ $t('取消') }}</bk-button>
         </div>
     </bk-dialog>
 </template>
 <script>
+    import {
+        isMatchFramework
+    } from 'shared/util'
+    import {
+        CUSTOM_COMPS_TYPE
+    } from '@/common/constant'
+
     export default {
         name: '',
         props: {
@@ -65,9 +85,11 @@
                     disabled: false,
                     loading: false
                 },
+                publicType: '',
+                publicTypeList: CUSTOM_COMPS_TYPE,
                 transfer: {
-                    title: ['应用列表', '公开应用'],
-                    emptyContent: ['无应用', '未选择应用'],
+                    title: [window.i18n.t('应用列表'), window.i18n.t('公开应用')],
+                    emptyContent: [window.i18n.t('无应用'), window.i18n.t('未选择应用')],
                     displayKey: 'projectName',
                     settingKey: 'id'
                 }
@@ -81,6 +103,7 @@
         watch: {
             data (data) {
                 this.scope = data.scope[1]
+                this.publicType = data.comp.publicType
                 if (this.scope === this.ScopeValue.Specify) {
                     this.selectedProjetList = data.scope[0].map(item => item.projectId)
                 } else {
@@ -97,8 +120,9 @@
         async created () {
             const url = IAM_ENABLE ? 'iam/myProject' : 'project/my'
             const projectList = await this.$store.dispatch(url, { config: {} })
-            projectList.splice(projectList.findIndex(item => item.id === this.projectId), 1)
-            this.sourceProjectList = projectList
+            const currentProject = projectList.splice(projectList.findIndex(item => item.id === this.projectId), 1)[0]
+            // 过滤出符合框架版本的应用
+            this.sourceProjectList = projectList.filter((project) => isMatchFramework(currentProject.framework, project.framework))
         },
         methods: {
             appendSourceProject () {
@@ -116,23 +140,32 @@
                 }
             },
             async handleConfirm () {
-                if (this.scope !== this.ScopeValue.Specify && this.scope === this.data.scope[1]) {
+                if (this.scope !== this.ScopeValue.Specify && this.scope === this.data.scope[1] && this.publicType === this.data.comp.publicType) {
                     this.$emit('update:isShow', false)
                     return
+                }
+                const data = {
+                    scope: this.scope,
+                    targetProjects: this.targetProjects,
+                    compId: this.data.comp.id,
+                    projectId: this.data.comp.belongProjectId
+                }
+                if (this.scope && !this.publicType) {
+                    this.$bkMessage({
+                        theme: 'error',
+                        message: window.i18n.t('公开范围至分类不能为空')
+                    })
+                    return
+                } else {
+                    if (this.scope) {
+                        Object.assign(data, { publicType: this.publicType })
+                    }
                 }
 
                 try {
                     this.dialog.loading = true
-                    const data = {
-                        scope: this.scope,
-                        targetProjects: this.targetProjects,
-                        compId: this.data.comp.id,
-                        projectId: this.data.comp.belongProjectId
-                    }
-
                     await this.$store.dispatch('components/scope', { data })
-
-                    this.messageSuccess('设置成功')
+                    this.messageSuccess(window.i18n.t('设置成功'))
                     this.$emit('update:isShow', false)
                     this.$emit('on-update')
                 } catch (e) {
@@ -183,6 +216,20 @@
                 margin-bottom: 22px;
             }
         }
+        .scope-all {
+            .scope-radio-group {
+                margin-bottom: 16px;
+            }
+        }
     }
+    :global {
+        .en-scope-radio-group{
+            .bk-form-radio {
 
+                &:last-child {
+                    width: 315px;
+                }
+            }
+        }
+    }
 </style>

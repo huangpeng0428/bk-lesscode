@@ -6,11 +6,18 @@
                     v-for="node in nodes"
                     :key="node.id"
                     :name="node.id"
-                    :label="`【${node.name}】节点`">
+                    :label="`【${node.name}】${$t('节点')}`">
                 </bk-tab-panel>
             </bk-tab>
             <div class="opereate-btns">
-                <custom-buttons :buttons="buttons"></custom-buttons>
+                <custom-buttons
+                    :table-name="tableName"
+                    :node-name="currentNodeName"
+                    :fields="fields"
+                    :system-fields="systemFields"
+                    :table-config="tableConfig"
+                    :buttons="buttons">
+                </custom-buttons>
                 <i
                     v-if="filters.length > 0"
                     class="bk-icon icon-funnel filter-switch-icon"
@@ -42,9 +49,9 @@
     </div>
 </template>
 <script>
-    import { mapGetters } from 'vuex'
     import { formMap } from 'shared/form'
     import queryStrSearchMixin from '../common/query-str-search-mixin'
+    import { NO_VIEWED_FIELD } from '../form/constants/forms.js'
     import CustomButtons from './custom-buttons.vue'
     import Filters from '../components/filters.vue'
     import TableFields from '../components/table-fields.vue'
@@ -89,12 +96,18 @@
             }
         },
         computed: {
-            ...mapGetters('page', ['pageDetail']),
             fields () {
                 return this.formDataMap[this.activeNode]?.content || []
             },
             tableName () {
                 return this.formDataMap[this.activeNode]?.tableName || ''
+            },
+            currentNodeName () {
+                if (this.activeNode) {
+                    const node = this.nodes.find(item => item.id === this.activeNode)
+                    return node ? node.name : ''
+                }
+                return ''
             }
         },
         async created () {
@@ -141,7 +154,7 @@
                         const { tableName, content } = res.data
                         formDetail = {
                             tableName,
-                            content: JSON.parse(content)
+                            content: JSON.parse(content).filter(field => !NO_VIEWED_FIELD.includes(field.type))
                         }
                     } else {
                         formDetail = formMap[this.formIds[this.activeNode]]
@@ -158,22 +171,26 @@
             },
             setNodeTabConfig () {
                 let filters = []
-                let tableConfig = []
+                let tableColsExclude = []
                 let buttons = []
                 let tableActions = []
+                let tableConfig = []
                 if (this.activeNode in this.config) {
                     filters = this.config[this.activeNode].filters || []
-                    tableConfig = this.config[this.activeNode].tableConfig || []
+                    tableColsExclude = this.config[this.activeNode].tableColsExclude || []
                     buttons = this.config[this.activeNode].buttons || []
                     tableActions = this.config[this.activeNode].tableActions || []
                 }
                 this.filters = filters
                 this.tableConfig = tableConfig
                 this.buttons = buttons
-                this.tableActions = tableActions
-                this.$set(this.config, this.activeNode, { filters, tableConfig, buttons, tableActions })
+                this.tableConfig = this.formDataMap[this.activeNode].content.filter(item => !tableColsExclude.includes(item.key)).map(item => item.key)
+                this.$set(this.config, this.activeNode, { filters, tableColsExclude, buttons, tableActions })
             },
-            handleTabChange (val) {
+            async handleTabChange (val) {
+                if (val === this.activeNode) {
+                    return
+                }
                 const { path, hash, params, query } = this.$route
                 const qs = { activeTab: 'node', activeNode: val }
                 if ('pageCode' in query) {
@@ -182,8 +199,8 @@
                 this.$router.replace({ path, hash, params, query: qs })
                 this.activeNode = val
                 this.filtersData = {}
+                await this.getFormData()
                 this.setNodeTabConfig()
-                this.getFormData()
             },
             handleFilterDataChange (val) {
                 this.filtersData = val

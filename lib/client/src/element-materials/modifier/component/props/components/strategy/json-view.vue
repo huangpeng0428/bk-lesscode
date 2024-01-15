@@ -23,8 +23,7 @@
                 v-if="!readonly"
                 class="option-add"
                 @click="showEdit">
-                编辑数据
-            </div>
+                {{ $t('编辑数据') }} </div>
         </section>
 
         <bk-dialog
@@ -38,7 +37,7 @@
             <div class="dialog-title" v-if="!showInput">
                 <bk-upload
                     :theme="'button'"
-                    :tip="`可导入JSON文件或输入JSON数据`"
+                    :tip="$t('可导入JSON文件或输入JSON数据')"
                     with-credentials
                     :multiple="false"
                     :url="uploadUrl"
@@ -48,13 +47,19 @@
             </div>
             <main class="main-container" :style="{ 'height': showInput ? '450px' : '350px' }">
                 <div class="init-json">
-                    <textarea class="json-input" placeholder="请输入JSON格式的数据" v-model="initJsonStr"></textarea>
+                    <span class="area-name">{{$t('编辑区')}}</span>
+                    <div class="area-container">
+                        <textarea ref="jsonInput" class="json-input" :placeholder="$t('请输入JSON格式的数据')" v-model="initJsonStr"></textarea>
+                    </div>
                 </div>
                 <div class="transform-json">
-                    <json-viewer
-                        :value="initJson"
-                        :expand-depth="5"
-                    ></json-viewer>
+                    <span class="area-name">{{$t('预览区')}}</span>
+                    <div class="area-container area-scroll">
+                        <json-viewer
+                            :value="initJson"
+                            :expand-depth="5"
+                        ></json-viewer>
+                    </div>
                 </div>
             </main>
         </bk-dialog>
@@ -108,7 +113,7 @@
                     try {
                         return JSON.parse(this.initJsonStr)
                     } catch (e) {
-                        return '解析error: ' + '请输入正确的JSON格式数据'
+                        return this.$t('解析error: 请输入正确的JSON格式数据')
                     }
                 }
                 return {}
@@ -128,6 +133,13 @@
                     this.initJsonStr = circleJSON(defaultValue, null, 4)
                 },
                 immediate: true
+            },
+            isShow (val) {
+                if (val) {
+                    setTimeout(() => {
+                        this.$refs.jsonInput.focus()
+                    }, 500)
+                }
             }
         },
         methods: {
@@ -148,20 +160,20 @@
                             if (!Array.isArray(initJsonArr) || initJsonArr.length === 0) {
                                 this.$bkMessage({
                                     theme: 'error',
-                                    message: '画布的JSON需要为Array且不能为空'
+                                    message: this.$t('画布的JSON需要为Array且不能为空')
                                 })
                                 return
                             }
                             if (!initJsonArr[0]?.componentId) {
                                 this.$bkMessage({
                                     theme: 'error',
-                                    message: 'JSON格式不是画布所需的格式'
+                                    message: this.$t('JSON格式不是画布所需的格式')
                                 })
                                 return
                             }
                             this.$bkInfo({
                                 title: '',
-                                subTitle: 'JSON会覆盖现有画布内容区域数据，请谨慎操作',
+                                subTitle: this.$t('JSON会覆盖现有画布内容区域数据，请谨慎操作'),
                                 confirmFn: () => {
                                     this.triggerChange(this.name, initJsonArr, this.type)
                                     this.isShow = false
@@ -175,7 +187,7 @@
                 } catch (err) {
                     this.$bkMessage({
                         theme: 'error',
-                        message: '请输入正确的JSON格式数据'
+                        message: this.$t('请输入正确的JSON格式数据')
                     })
                 }
             },
@@ -194,9 +206,6 @@
     .json-setting-dialog {
         /deep/ .bk-dialog {
             position: initial;
-            /* &.ease-enter-active.ease-enter-to {
-                animation: none!important;
-            } */
             .bk-dialog-content {
                 top: calc(50vh - 324px)!important;
             }
@@ -210,16 +219,20 @@
             display:flex;
             overflow: hidden;
             margin: 0 auto;
-            border: solid 1px #E5EBEE;
-            > div {
-                border-right: solid 1px #E5EBEE;
+            .area-container {
+                height: 430px;
+                border: 1px solid #E5EBEE;
+            }
+            .area-scroll {
                 overflow: auto;
                 @mixin scroller;
+            }
+            .area-name {
+                font-size: 12px;
             }
             .init-json {
                 flex: 1;
                 overflow: hidden;
-                margin-top: 10px;
                 .json-input {
                     border: 0px;
                     width: 100%;

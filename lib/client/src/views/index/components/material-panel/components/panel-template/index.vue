@@ -10,62 +10,56 @@
 -->
 
 <template>
-    <section class="panel-template" v-bkloading="{ isLoading }">
-        <div class="category-tabs">
-            <div
-                class="tab-item"
-                :class="{ active: tab === 'project' }"
-                @click="handleToggleTab('project')">
-                <span class="tab-item-label">页面模板</span>
-            </div>
-            <div
-                class="tab-item"
-                :class="{ active: tab === 'market' }"
-                @click="handleToggleTab('market')">
-                <span class="tab-item-label">模板市场</span>
-            </div>
-        </div>
+    <section class="lesscode-materials-panel-content panel-template" v-bkloading="{ isLoading }">
+        <select-tab
+            :tab-list="tabList"
+            :current="tab"
+            :change-tab="handleToggleTab"
+        >
+        </select-tab>
         <div class="template-list">
-            <search-box :list="renderTemplateList"
+            <search-box
+                :list="renderTemplateList"
+                :placeholder="$t('模板名称')"
                 @on-change="handleSearchChange" />
-            <group-box
-                v-for="(group) in renderGroupTemplateList"
-                :list="group.list"
-                :group-name="group.categoryName"
-                group="layout"
-                :create-fallback="createFallback"
-                :key="group.id">
-                <div
-                    v-for="(template, templateIndex) in group.list"
-                    class="template-item"
-                    :class="{
-                        'uninstall': type === 'market' && !template.hasInstall
-                    }"
-                    :key="templateIndex">
-                    <div class="item-img">
-                        <img :src="template.previewImg" />
-                        <div
-                            v-if="type === 'market' && !template.hasInstall"
-                            class="mask">
-                            <bk-button
-                                class="apply-btn"
-                                theme="primary"
-                                size="small"
-                                @click.stop="handleApply(template)">
-                                添加到应用
-                            </bk-button>
+            <div class="materials-group-box-list">
+                <group-box
+                    v-for="(group) in renderGroupTemplateList"
+                    :list="group.list"
+                    :group-name="group.categoryName"
+                    group="layout"
+                    :create-fallback="createFallback"
+                    :key="group.id">
+                    <div
+                        v-for="(template, templateIndex) in group.list"
+                        class="template-item"
+                        :class="{
+                            'uninstall': type === 'market' && !template.hasInstall
+                        }"
+                        :key="templateIndex">
+                        <div class="item-img">
+                            <img :src="template.previewImg" />
+                            <div
+                                v-if="type === 'market' && !template.hasInstall"
+                                class="mask">
+                                <bk-button
+                                    class="apply-btn"
+                                    theme="primary"
+                                    size="small"
+                                    @click.stop="handleApply(template)">
+                                    {{ $t('添加到应用') }} </bk-button>
+                            </div>
+                        </div>
+                        <div class="item-info">
+                            <span class="item-name" v-bk-tooltips="template.templateName">{{ template.templateName }}</span>
+                            <span
+                                class="preview"
+                                @click="handlePreview(template)">
+                                {{ $t('预览') }} </span>
                         </div>
                     </div>
-                    <div class="item-info">
-                        <span class="item-name">{{ template.templateName }}</span>
-                        <span
-                            class="preview"
-                            @click="handlePreview(template)">
-                            预览
-                        </span>
-                    </div>
-                </div>
-            </group-box>
+                </group-box>
+            </div>
         </div>
         <template-edit-dialog
             ref="templateApplyDialog"
@@ -80,6 +74,7 @@
     import { bus } from '@/common/bus'
     import GroupBox from '../common/group-box'
     import SearchBox from '../common/search-box'
+    import SelectTab from '../common/select-tab'
     import { mapGetters } from 'vuex'
 
     export default {
@@ -87,6 +82,7 @@
         components: {
             GroupBox,
             SearchBox,
+            SelectTab,
             templateEditDialog
         },
         props: {
@@ -99,6 +95,16 @@
             return {
                 isLoading: false,
                 tab: 'project',
+                tabList: [
+                    {
+                        key: 'project',
+                        name: window.i18n.t('页面模板')
+                    },
+                    {
+                        key: 'market',
+                        name: window.i18n.t('模板市场')
+                    }
+                ],
                 type: 'project',
                 dragOptions: {
                     disabled: false
@@ -118,6 +124,7 @@
             ...mapGetters('projectVersion', {
                 versionId: 'currentVersionId'
             }),
+            ...mapGetters('project', ['projectDetail']),
             renderTemplateList () {
                 return this.type === 'project' ? this.projectTemplateList : this.marketTemplateList
             }
@@ -141,8 +148,8 @@
                         tmpMarketTemplateList
                     ] = await Promise.all([
                         this.$store.dispatch('pageTemplate/categoryList', { projectId: this.projectId }),
-                        this.$store.dispatch('pageTemplate/list', { projectId: this.projectId }),
-                        this.$store.dispatch('pageTemplate/list', { type: 'OFFCIAL' })
+                        this.$store.dispatch('pageTemplate/list', { projectId: this.projectId, framework: this.projectDetail.framework }),
+                        this.$store.dispatch('pageTemplate/list', { type: 'OFFCIAL', framework: this.projectDetail.framework })
                     ])
                     const projectTemplateList = tmpProjectTemplateList.map(item => ({
                         ...item,
@@ -243,7 +250,7 @@
              * @param { Number } template
              */
             handlePreview (template) {
-                window.open(`/preview-template/project/${template.belongProjectId}/${template.id}`, '_blank')
+                window.open(`/preview-template/project/${template.belongProjectId}/${template.id}?framework=${this.projectDetail.framework}`, '_blank')
             },
 
             handleApply (template) {
@@ -280,45 +287,21 @@
     }
 </script>
 <style lang="postcss" scoped>
-    @import "@/css/mixins/scroller";
 
     .panel-template{
         min-height: 100%;
-        height: 100%;
-        .category-tabs{
-            display: flex;
-            border-bottom: 1px solid #ccc;
-            .tab-item {
-                flex: 1;
-                font-size: 14px;
-                padding: 0 8px;
-                margin-right: 4px;
-                margin-bottom: -1px;
-                height: 46px;
-                line-height: 46px;
-                white-space: nowrap;
-                text-align: center;
-                cursor: pointer;
-                &.active{
-                    color: #3a84ff;
-                    border-bottom: 2px solid #3a84ff;
-                }
-            }
-        }
         .search-box {
-            padding: 12px 20px;
+            padding: 6px 12px;
         }
         .template-list{
             height: calc(100% - 46px);
             padding-bottom: 10px;
-            overflow-y: auto;
-            @mixin scroller;
+           
         }
         .template-item {
-            margin-top: 10px;
-            margin-left: 8px;
+            margin: 0 8px 16px 0;
             cursor: pointer;
-            width: 136px;
+            width: 134px;
             height: 111px;
             background: #ffffff;
             border: 1px solid #dcdee5;

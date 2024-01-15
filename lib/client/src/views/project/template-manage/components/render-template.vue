@@ -2,12 +2,12 @@
     <section v-bkloading="{ isLoading: isLoading }" style="height: 100%">
         <main class="templates templates-content" v-show="!isLoading">
             <div class="templates-head">
-                <bk-button theme="primary" @click="handleImport">导入模板</bk-button>
+                <bk-button theme="primary" @click="handleImport">{{ $t('导入模板') }}</bk-button>
                 <div class="extra">
                     <type-select @select-change="handleSelectChange"></type-select>
                     <bk-input
                         :style="{ width: '400px' }"
-                        placeholder="请输入模板名称"
+                        :placeholder="$t('请输入模板名称')"
                         :clearable="true"
                         :right-icon="'bk-icon icon-search'"
                         v-model="keyword"
@@ -21,11 +21,11 @@
                     <div class="template-item" v-for="(template, index) in renderList" :key="index">
                         <div class="item-bd">
                             <div class="preview">
-                                <img :src="getPreviewImg(template.previewImg)" alt="页面缩略预览">
+                                <img :src="getPreviewImg(template.previewImg)" :alt="$t('页面缩略预览')">
                                 <div class="mask">
                                     <div class="operate-btns">
-                                        <bk-button class="edit-btn" theme="primary" @click.stop="handlePreview(template)">预览</bk-button>
-                                        <bk-button class="preview-btn" @click="handleDownloadSource(template)">下载源码</bk-button>
+                                        <bk-button class="edit-btn" theme="primary" @click.stop="handlePreview(template)">{{ $t('预览') }}</bk-button>
+                                        <bk-button class="preview-btn" v-enClass="'en-preview-btn'" :title="$t('下载源码')" @click="handleDownloadSource(template)">{{ $t('下载源码') }}</bk-button>
                                     </div>
                                 </div>
                             </div>
@@ -37,7 +37,7 @@
                                         <i v-if="template.templateType === 'MOBILE'" class="bk-drag-icon bk-drag-mobilephone"> </i>
                                         <i v-else class="bk-drag-icon bk-drag-pc"> </i>
                                     </span>
-                                    <div class="name" :title="template.templateName">{{template.templateName}}</div>
+                                    <div class="name" v-tooltips="template.templateName">{{template.templateName}}</div>
                                 </div>
                                 <div class="stat">{{ template.updateUser || template.createUser }}</div>
                             </div>
@@ -47,22 +47,17 @@
                                         <i class="bk-drag-icon bk-drag-more-dot"></i>
                                     </span>
                                     <ul class="bk-dropdown-list" slot="dropdown-content" @click="hideDropdownMenu(template.id)">
-                                        <li><a href="javascript:;" @click="handleEdit(template)">编辑</a></li>
-                                        <li><a href="javascript:;" @click="handleExport(template)">导出</a></li>
-                                        <li><a href="javascript:;" @click="handleDelete(template)">删除</a></li>
+                                        <li><a href="javascript:;" @click="handleEdit(template)">{{ $t('编辑') }}</a></li>
+                                        <li><a href="javascript:;" @click="handleExport(template)">{{ $t('导出') }}</a></li>
+                                        <li><a href="javascript:;" @click="handleDelete(template)">{{ $t('删除') }}</a></li>
                                     </ul>
                                 </bk-dropdown-menu>
                             </div>
                         </div>
-                        <span v-if="template.isOffcial" class="default-tag">公开模板</span>
+                        <span v-if="template.isOffcial" class="default-tag">{{ $t('公开模板') }}</span>
                     </div>
                 </div>
-                <div class="empty" v-show="(!templateList.length || !renderList.length) && !isLoading">
-                    <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part">
-                        <div v-if="!templateList.length" class="empty-page">暂无模板</div>
-                        <div v-else>无搜索结果</div>
-                    </bk-exception>
-                </div>
+                <empty-status class="empty" v-show="(!templateList.length || !renderList.length) && !isLoading" :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
             </div>
             <template-edit-dialog ref="templateEditDialog" :refresh-list="refreshData"></template-edit-dialog>
             <template-import-dialog ref="templateImportDialog" :refresh-list="refreshData"></template-import-dialog>
@@ -106,11 +101,13 @@
                 pageRouteList: [],
                 routeGroup: [],
                 isLoading: true,
-                templateType: ''
+                templateType: '',
+                emptyType: 'noData'
             }
         },
         computed: {
             ...mapGetters(['user']),
+            ...mapGetters('project', ['projectDetail']),
             projectId () {
                 return this.$route.params.projectId
             }
@@ -118,7 +115,7 @@
         watch: {
             keyword (val) {
                 if (!val) {
-                    this.handleSearch(false)
+                    this.handleSearch(true)
                 }
             },
             categoryId () {
@@ -136,7 +133,7 @@
             async getTemplateList () {
                 this.isLoading = true
                 try {
-                    this.templateList = await this.$store.dispatch('pageTemplate/list', { projectId: this.projectId, categoryId: this.categoryId })
+                    this.templateList = await this.$store.dispatch('pageTemplate/list', { projectId: this.projectId, categoryId: this.categoryId, framework: this.projectDetail.framework })
 
                     if (this.keyword) {
                         this.renderList = this.templateList.filter(item => item.templateName.indexOf(this.keyword) !== -1)
@@ -181,7 +178,7 @@
                     templateName: template.templateName,
                     isOffcial: template.isOffcial,
                     offcialType: template.offcialType,
-                    previewImg: template?.previewImg.startsWith('http:') ? template.previewImg : ''
+                    previewImg: template?.previewImg.startsWith('http') ? template.previewImg : ''
                 }
             },
             async handleImport () {
@@ -193,8 +190,8 @@
             },
             handleDelete (template) {
                 this.$bkInfo({
-                    title: '确认删除?',
-                    subTitle: `确认删除模板  “${template.templateName}”?`,
+                    title: window.i18n.t('确认删除?'),
+                    subTitle: window.i18n.t('确认删除模板  “{0}”?', [template.templateName]),
                     theme: 'danger',
                     confirmFn: async () => {
                         await this.$store.dispatch('pageTemplate/delete', {
@@ -217,19 +214,21 @@
                 if (!template.content) {
                     this.$bkMessage({
                         theme: 'error',
-                        message: '该模板内容为空'
+                        message: window.i18n.t('该模板内容为空')
                     })
                     return
                 }
-                const versionQuery = `${template.versionId ? `?v=${template.versionId}` : ''}`
-                window.open(`/preview-template/project/${this.projectId}/${template.id}${versionQuery}`, '_blank')
+                const versionQuery = `${template.versionId ? `&v=${template.versionId}` : ''}`
+                window.open(`/preview-template/project/${this.projectId}/${template.id}?framework=${this.projectDetail.framework}${versionQuery}`, '_blank')
             },
             handleSearch (clear = false) {
                 if (clear) {
                     this.keyword = ''
                     this.renderList = this.templateList
+                    this.emptyType = 'noData'
                 } else {
                     this.renderList = this.templateList.filter(item => item.templateName.toLowerCase().indexOf(this.keyword.toLowerCase()) !== -1)
+                    this.emptyType = 'search'
                 }
                 this.handleTypeChange()
             },
@@ -272,13 +271,15 @@
                 } else if (this.templateType === 'MOBILE') {
                     this.renderList = this.renderList.filter(item => item.templateType === 'MOBILE')
                 }
+            },
+            handlerClearSearch (searchName) {
+                this.keyword = searchName
             }
         }
     }
 </script>
 
 <style lang="postcss" scoped>
-/* page */
     .templates-content {
         padding: 16px 24px;
         display: flex;
@@ -295,6 +296,9 @@
             }
             .extra {
                 display: flex;
+                .type-select {
+                    margin-right: 8px;
+                }
             }
         }
         .templates-body {
@@ -430,7 +434,17 @@
                                 .preview-btn {
                                     width: 86px;
                                     margin-left: 10px;
-                                    margin-rihgt: 59px;
+                                
+                                }
+                                .en-preview-btn {
+                                    width: 100px;
+                                    /deep/ span {
+                                            display: block;
+                                            width: 80px;
+                                            overflow: hidden;
+                                            white-space: nowrap;
+                                            text-overflow: ellipsis;
+                                    }
                                 }
                             }
                         }

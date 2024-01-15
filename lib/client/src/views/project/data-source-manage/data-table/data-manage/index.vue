@@ -3,8 +3,7 @@
         <render-header>
             <span class="table-header">
                 <i class="bk-drag-icon bk-drag-arrow-back" @click="goBack"></i>
-                数据管理
-            </span>
+                {{ $t('数据管理') }} </span>
         </render-header>
         <div class="g-page-tab">
             <div
@@ -19,10 +18,8 @@
             <template v-if="!pageStatus.errorCode">
                 <bk-alert type="info" v-if="isShowUpdateInfo">
                     <span slot="title" class="table-data-info">
-                        预览环境数据表结构有更新，需
-                        <bk-button text @click="goDeploy">部署</bk-button>
-                        后生效
-                    </span>
+                        {{ $t('预览环境数据表结构有更新，需') }} <bk-button text @click="goDeploy">{{ $t('部署') }}</bk-button>
+                        {{ $t('后生效') }} </span>
                 </bk-alert>
 
                 <layout class="data-manage-main">
@@ -30,7 +27,7 @@
                         <bk-input
                             clearable
                             class="filter-table-name"
-                            placeholder="请输入表名"
+                            :placeholder="$t('请输入表名')"
                             right-icon="bk-icon icon-search"
                             v-model="pageStatus.tableName"
                         ></bk-input>
@@ -45,15 +42,13 @@
                                     'table-item': true
                                 }"
                             >
-                                <span class="table-item-name">
+                                <span class="table-item-name" v-tooltips="item.tableName">
                                     <i class="bk-drag-icon bk-drag-data-table"></i>
-                                    {{ item.tableName }}
+                                    <span>{{ item.tableName }}</span>
                                 </span>
                             </li>
                         </ul>
-                        <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part" v-else>
-                            <div>暂无搜索结果</div>
-                        </bk-exception>
+                        <empty-status v-else :type="emptyType" @clearSearch="handlerClearSearch" :part="false"></empty-status>
                     </aside>
                     <section class="data-main">
                         <bk-tab :active.sync="pageStatus.currentTab">
@@ -74,20 +69,15 @@
             </template>
             <bk-exception class="exception-wrap-item exception-part" type="empty" scene="part" v-else>
                 <div v-if="pageStatus.errorCode === 'CANNOT_READ_INSTANCE_INFO'">
-                    绑定应用的{{ pageStatus.activeEnvironment.name }}，未开启 GCS-MySql增强服务，无法进行数据管理，请尝试
-                    <bk-button text @click="goDeploy">重新部署</bk-button>
-                    后再试
-                </div>
+                    {{ $t('绑定应用的{0}，未开启 GCS-MySql增强服务，无法进行数据管理，请尝试', [pageStatus.activeEnvironment.name]) }} <bk-button text @click="goDeploy">{{ $t('重新部署') }}</bk-button>
+                    {{ $t('后再试') }} </div>
                 <div v-else-if="pageStatus.errorCode === 'NOT_BIND_APPLICATION'">
-                    本应用暂未绑定蓝鲸应用，请绑定蓝鲸应用并
-                    <bk-button text @click="goDeploy">部署</bk-button>
-                    后再试
-                </div>
+                    {{ $t('本应用暂未绑定蓝鲸应用，请绑定蓝鲸应用并') }} <bk-button text @click="goDeploy">{{ $t('部署') }}</bk-button>
+                    {{ $t('后再试') }} </div>
                 <div v-else-if="!pageStatus.tableList.length">
-                    {{ pageStatus.activeEnvironment.name }}未查询到表，无法进行数据管理，请
-                    <bk-button text @click="goDeploy">重新部署</bk-button>
-                    后再试
-                </div>
+                    {{ pageStatus.activeEnvironment.name }}{{$t('未查询到表，无法进行数据管理，请')}}
+                    <bk-button text @click="goDeploy">{{ $t('重新部署') }}</bk-button>
+                    {{ $t('后再试') }} </div>
             </bk-exception>
         </template>
     </article>
@@ -113,14 +103,14 @@
     import layout from '@/components/ui/layout.vue'
 
     const environmentList = [
-        { key: 'preview', name: '预览环境' },
-        { key: 'stag', name: '预发布环境' },
-        { key: 'prod', name: '正式环境' }
+        { key: 'preview', name: window.i18n.t('预览环境') },
+        { key: 'stag', name: window.i18n.t('预发布环境') },
+        { key: 'prod', name: window.i18n.t('正式环境') }
     ]
 
     const panels = [
-        { name: 'render-data', label: '数据', count: 10 },
-        { name: 'render-struct', label: '表结构', count: 20 },
+        { name: 'render-data', label: window.i18n.t('数据'), count: 10 },
+        { name: 'render-struct', label: window.i18n.t('表结构'), count: 20 },
         { name: 'render-api', label: 'API', count: 30 }
     ]
 
@@ -137,7 +127,7 @@
             const projectId = router?.currentRoute?.params?.projectId
             const tableName = router?.currentRoute?.query?.tableName
             const pageStatus = reactive({
-                activeEnvironment: { key: 'preview', name: '预览环境' },
+                activeEnvironment: { key: 'preview', name: window.i18n.t('预览环境') },
                 isLoading: false,
                 tableName: '',
                 activeTable: {
@@ -223,6 +213,10 @@
                 })
             }
 
+            const handlerClearSearch = () => {
+                pageStatus.tableName = ''
+            }
+
             const displayTableList = computed(() => {
                 return pageStatus.tableList.filter((table) => {
                     return table.tableName.includes(pageStatus.tableName)
@@ -235,6 +229,13 @@
                     prod: releaseInfo.isProdNeedUpdate
                 }
                 return updateMap[pageStatus.activeEnvironment.key]
+            })
+
+            const emptyType = computed(() => {
+                if (pageStatus.tableName) {
+                    return 'search'
+                }
+                return 'noData'
             })
 
             watch(
@@ -253,16 +254,21 @@
                 pageStatus,
                 displayTableList,
                 isShowUpdateInfo,
+                emptyType,
                 goBack,
                 goDeploy,
                 setEnvironment,
-                setActiveTable
+                setActiveTable,
+                handlerClearSearch
             }
         }
     })
 </script>
 
 <style lang="postcss" scoped>
+    @import "@/css/mixins/scroller";
+    @import "@/css/mixins/ellipsis";
+
     .table-header {
         display: flex;
         align-items: center;
@@ -281,6 +287,7 @@
             background: #fafbfd;
             height: 100%;
             overflow-y: auto;
+            @mixin scroller;
             .filter-table-name {
                 padding: 0 15px;
                 ::v-deep .right-icon {
@@ -309,10 +316,11 @@
                 }
             }
             .table-item-name {
+                @mixin ellipsis 330px;
                 line-height: 19px;
                 flex: 1;
                 .bk-drag-data-table {
-                    margin-right: 3px;
+                    margin-right: 4px;
                     font-size: 16px;
                 }
             }
@@ -331,6 +339,7 @@
                 padding: 20px;
                 height: calc(100% - 50px);
                 overflow-y: auto;
+                @mixin scroller;
             }
             ::v-deep .bk-tab-section {
                 padding: 0;

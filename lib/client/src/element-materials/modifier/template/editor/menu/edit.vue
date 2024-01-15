@@ -1,68 +1,83 @@
 <template>
     <div class="template-menu-edit">
         <div class="menu-name">
-            <bk-input placeholder="请输入导航名称" :value="baseInfo.name" @change="handleNameChange">
+            <bk-input :placeholder="$t('请输入导航名称')" :value="baseInfo.name" @change="handleNameChange">
                 <div
                     v-if="showIcon"
                     slot="prepend"
                     ref="icon"
                     class="group-text"
                     style="padding: 0 10px">
-                    <i :class="iconClass" />
+                    <i :class="iconClass" style="padding: 1px;" />
                 </div>
             </bk-input>
         </div>
         <div class="menu-page-wraper" v-if="showMenu">
             <div v-if="isPageCode">
-                <bk-select
-                    class="menu-page"
-                    placeholder="请选中路由"
-                    clearable
-                    :value="baseInfo.pageCode"
-                    @change="handlePageCodeChange">
-                    <bk-option
-                        v-for="page in pageRouteList"
-                        v-bk-tooltips="{ disabled: !page.disabled, content: '未设置路由' }"
-                        :key="page.pageCode"
-                        :id="page.pageCode"
-                        :disabled="page.disabled"
-                        :name="page.pageName" />
-                </bk-select>
+                <div class="link-type">
+                    <bk-select
+                        class="menu-page"
+                        :placeholder="$t('请选中路由')"
+                        style="width: 100%"
+                        clearable
+                        :value="baseInfo.pageCode"
+                        @change="handlePageCodeChange">
+                        <bk-option
+                            v-for="page in pageRouteList"
+                            v-bk-tooltips="{ disabled: !page.disabled, content: $t('未设置路由') }"
+                            :key="page.pageCode"
+                            :id="page.pageCode"
+                            :disabled="page.disabled"
+                            :name="page.pageName" />
+                    </bk-select>
+                    <div class="menu-link-isblank" v-if="hasBlank">
+                        <span class="text" v-bk-tooltips="$t('是否打开新窗口')">{{$t('新窗口')}}</span>
+                        <bk-switcher theme="primary" size="small" :value="baseInfo.isBlank" @change="handleIsBlankChange" />
+                    </div>
+                </div>
                 <div class="menu-page-query">
-                    <bk-input
-                        v-if="isShowPageQuery"
-                        :value="baseInfo.query"
-                        placeholder="name=zhangsan&age=18"
-                        @change="handlePageQueryChange" />
+                    <section v-if="isShowPageQuery" class="route-params">
+                        <i class="bk-drag-icon bk-drag-info-tips params-tips" v-bk-tooltips="$t('可以使用 {{变量标识}} 来使用应用级别变量')"></i>
+                        <bk-input
+                            :value="baseInfo.query"
+                            :placeholder="paramsPlaceholder"
+                            @change="handlePageQueryChange" />
+                    </section>
+                    
                     <bk-button
                         v-else
                         class="add-query"
                         text
                         style="font-size: 12px;"
                         @click="handleShowEditPageQuery">
-                        添加路由参数
-                    </bk-button>
+                        {{ $t('添加路由参数') }} </bk-button>
                     <div
                         v-if="isShowPageQuery"
                         class="query-remove"
-                        v-bk-tooltips.top-start="'删除路由参数'"
+                        v-bk-tooltips.top-start="$t('删除路由参数')"
+                        :style="styles"
                         @click="handleRemovePageQuery">
                         <i class="bk-icon icon-minus-circle" />
                     </div>
                 </div>
             </div>
-            <bk-input
-                v-else
-                class="menu-link"
-                placeholder="请输入链接"
-                :value="baseInfo.link"
-                clearable
-                @change="handleLinkChange" />
+            <div v-else class="link-type">
+                <bk-input
+                    class="menu-link"
+                    :placeholder="$t('请输入链接')"
+                    :value="baseInfo.link"
+                    clearable
+                    @change="handleLinkChange" />
+                <div class="menu-link-isblank" v-if="hasBlank">
+                    <span class="text" v-bk-tooltips="$t('是否打开新窗口')">{{$t('新窗口')}}</span>
+                    <bk-switcher theme="primary" size="small" :value="baseInfo.isBlank" @change="handleIsBlankChange" />
+                </div>
+            </div>
             <div
                 class="menu-type"
-                v-bk-tooltips.top-start="isPageCode ? '点击切换链接模式' : '点击切换路由模式'"
+                v-bk-tooltips.top-start="isPageCode ? $t('点击切换链接模式') : $t('点击切换路由模式')"
                 @click="handleTogglePageCode">
-                <div class="text">{{ isPageCode ? '路由' : '链接' }}</div>
+                <div class="text">{{ isPageCode ? $t('路由') : $t('链接') }}</div>
             </div>
         </div>
         <div style="display: none">
@@ -72,7 +87,7 @@
                         <input
                             ref="search"
                             spellcheck="false"
-                            placeholder="输入 icon 的名字"
+                            :placeholder="$t('输入 icon 的名字')"
                             @input="handleInputChange">
                         <i class="bk-icon icon-search icon-search-flag" />
                     </div>
@@ -86,7 +101,7 @@
                                 <i :class="searchItem.icon" />
                                 <span class="item-name">{{ searchItem.name }}</span>
                             </div>
-                            <div v-if="searchList.length < 1" key="searchEmpty" class="search-empty">暂无数据</div>
+                            <div v-if="searchList.length < 1" key="searchEmpty" class="search-empty">{{ $t('暂无数据') }}</div>
                         </template>
                         <template v-else>
                             <template v-for="buildIconGroupName in Object.keys(buildInIconGroup)">
@@ -115,8 +130,8 @@
 <script>
     import _ from 'lodash'
     import { mapState } from 'vuex'
-    import iconComponentList from '@/element-materials/materials/icon-list.js'
-    import iconVantList from '@/element-materials/materials/vant/icon-list'
+    import iconComponentList from '@/element-materials/materials/vue2/icon-list.js'
+    import iconVantList from '@/element-materials/materials/vue2/vant/icon-list'
 
     export default {
         name: '',
@@ -136,6 +151,14 @@
             platform: {
                 type: String,
                 default: 'PC'
+            },
+            hasBlank: {
+                type: Boolean,
+                default: false
+            },
+            hasChild: {
+                type: Boolean,
+                default: true
             }
         },
         data () {
@@ -152,6 +175,7 @@
                 },
                 searchValue: '',
                 searchList: [],
+                paramsPlaceholder: 'name=lisi&age={{age}}',
                 isIconListRender: false
             }
         },
@@ -193,6 +217,16 @@
 
                 pageRouteList.sort((p1, p2) => p1.disabled - p2.disabled)
                 return pageRouteList
+            },
+            styles () {
+                if (!this.hasChild) {
+                    return {
+                        right: '-18px'
+                    }
+                }
+                return {
+                    right: '-27.5px'
+                }
             }
         },
         mounted () {
@@ -270,9 +304,20 @@
                 this.triggerChange()
             },
             handlePageCodeChange (pageCode) {
-                const { fullPath } = this.pageRouteList.find(item => item.pageCode === pageCode)
+                if (!pageCode) { // 如果清空表单，路由重置
+                    this.resetBaseInfo()
+                    return
+                }
+                const { fullPath, pageId } = this.pageRouteList.find(item => item.pageCode === pageCode)
                 this.baseInfo.pageCode = pageCode
+                this.baseInfo.pageId = pageId
                 this.baseInfo.fullPath = fullPath
+                this.triggerChange()
+            },
+            resetBaseInfo () {
+                this.baseInfo.pageCode = ''
+                this.baseInfo.fullPath = ''
+                this.baseInfo.pageId = ''
                 this.triggerChange()
             },
             handleShowEditPageQuery () {
@@ -296,6 +341,10 @@
                 this.baseInfo.link = ''
                 this.baseInfo.query = ''
                 this.isPageCode = !this.isPageCode
+            },
+            handleIsBlankChange (isBlank) {
+                this.baseInfo.isBlank = isBlank
+                this.triggerChange()
             }
         }
     }
@@ -378,6 +427,16 @@
             position: relative;
             padding-left: 32px;
             margin-top: 8px;
+            .menu-link-isblank {
+                align-content: center;
+                flex-shrink:0;
+                overflow: auto;
+                margin-top:8px;
+                font-size: 12px;
+                color: #3A84FF;
+                line-height: 1;
+                transform: scale(.8333);
+            }
             .menu-type{
                 position: absolute;
                 top: 8px;
@@ -396,15 +455,16 @@
                     transform: scale(.8333);
                 }
             }
+            .link-type {
+                display: flex;
+                }
             .menu-page-query{
                 position: relative;
                 top: 8px;
                 margin-bottom: 8px;
                 .query-remove{
                     position: absolute;
-                    top: 0;
-                    top: 17px;
-                    right: -28px;
+                    top: 10px;
                     display: flex;
                     font-size: 16px;
                     color: #979BA5;
@@ -412,6 +472,14 @@
                 }
                 .bk-button-text.bk-primary:hover {
                     color: #1964E1;
+                }
+                .route-params {
+                    display: flex;
+                    align-items: center;
+                    .params-tips {
+                        position: absolute;
+                        left: -20px;
+                    }
                 }
             }
         }

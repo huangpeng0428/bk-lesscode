@@ -3,7 +3,9 @@
         <bk-button
             v-for="button in buttons.slice(0, 4)"
             v-bind="getProperties(button)"
-            :key="button.id">
+            :loading="button.loading"
+            :key="button.id"
+            @click="handleClick(button)">
             {{ button.name }}
         </bk-button>
         <bk-dropdown-menu
@@ -12,24 +14,55 @@
             @show="isDropdownShow = true"
             @hide="isDropdownShow = false">
             <div class="more-buttons-trigger" slot="dropdown-trigger">
-                更多
-                <i :class="['bk-icon icon-angle-down angle-icon', { 'active': isDropdownShow }]"></i>
+                {{ $t('更多') }} <i :class="['bk-icon icon-angle-down angle-icon', { 'active': isDropdownShow }]"></i>
             </div>
             <ul class="more-btns-list" slot="dropdown-content">
-                <li v-for="button in buttons.slice(4)" :key="button.id" class="button-item">{{ button.name }}</li>
+                <li v-for="button in buttons.slice(4)" :key="button.id" class="button-item" @click="handleClick(button)">{{ button.name }}</li>
             </ul>
         </bk-dropdown-menu>
     </section>
 </template>
 <script>
+    import * as XLSX from 'xlsx'
+
     export default {
         name: 'CustomButtons',
         props: {
-            buttons: Array
+            tableName: String,
+            nodeName: String,
+            buttons: Array,
+            fields: {
+                type: Array,
+                default: () => []
+            },
+            systemFields: {
+                type: Array,
+                default: () => []
+            },
+            tableConfig: {
+                type: Array,
+                default: () => []
+            }
         },
         data () {
             return {
-                isDropdownShow: false
+                isDropdownShow: false,
+                tableDataLoading: false
+            }
+        },
+        computed: {
+            colFields () {
+                const list = []
+                this.tableConfig.forEach(key => {
+                    let field = this.systemFields.find(item => item.key === key)
+                    if (!field) {
+                        field = this.fields.find(item => item.key === key)
+                    }
+                    if (field) {
+                        list.push(field)
+                    }
+                })
+                return list
             }
         },
         methods: {
@@ -39,6 +72,48 @@
                     props[key] = button.props[key].val
                 })
                 return props
+            },
+            async exportData (button) {
+                try {
+                    this.tableDataLoading = true
+                    const params = {
+                        fields: this.tableConfig
+                    }
+                    button.loading = true
+                    const res = await this.$http.post(`/nocode/filterTableData/keys/tableName/${this.tableName}`, params)
+                    const list = res.data.list
+                    const header = this.tableConfig.map(key => {
+                        const field = this.colFields.find(item => item.key === key)
+                        return field.name || ''
+                    })
+                    const body = []
+                    list.forEach(item => {
+                        const row = []
+                        this.tableConfig.forEach(key => {
+                            for (const [rowKey, value] of Object.entries(item)) {
+                                if (key === rowKey) {
+                                    row.push(value)
+                                }
+                            }
+                        })
+                        body.push(row)
+                    })
+
+                    const wb = XLSX.utils.book_new()
+                    const ws = XLSX.utils.aoa_to_sheet([header, ...body])
+                    XLSX.utils.book_append_sheet(wb, ws)
+                    XLSX.writeFile(wb, `${this.nodeName || this.tableName}.xlsx`)
+                } catch (e) {
+                    console.log(e.message || e)
+                } finally {
+                    this.tableDataLoading = false
+                    button.loading = false
+                }
+            },
+            handleClick (button) {
+                if (button.events.click?.name === 'export') {
+                    this.exportData(button)
+                }
             }
         }
     }

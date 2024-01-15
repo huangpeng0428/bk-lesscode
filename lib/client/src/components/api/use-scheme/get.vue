@@ -3,8 +3,11 @@
         :tabs="tabs"
         :active.sync="activeTab"
     >
+        <template slot="tool">
+            <slot name="tool"></slot>
+        </template>
         <section v-if="activeTab === 'edit'">
-            <scheme-header />
+            <scheme-header :show-rule="showRule" />
             <single-scheme
                 ref="singleSchemeRef"
                 v-for="(renderQueryParam, index) in renderQueryParams"
@@ -14,8 +17,14 @@
                 :minus-disable="renderQueryParams.length <= 1"
                 :render-slot="renderSlot"
                 :disable="disabled"
-                @plusBrotherNode="handlePlusBrotherNode"
-                @minusNode="handleMinusNode"
+                :name-options="nameOptions"
+                :brothers="renderQueryParams"
+                :variable-list="variableList"
+                :function-list="functionList"
+                :api-list="apiList"
+                :show-rule="showRule"
+                @plusBrotherNode="handlePlusBrotherNode(index)"
+                @minusNode="handleMinusNode(index)"
                 @update="(param) => handleUpdate(index, param)"
             >
             </single-scheme>
@@ -57,35 +66,43 @@
             params: Array,
             renderSlot: Function,
             getParamVal: Function,
-            disabled: Boolean
+            disabled: Boolean,
+            nameOptions: Array,
+            variableList: Array,
+            functionList: Array,
+            apiList: Array,
+            showRule: {
+                type: Boolean,
+                default: true
+            }
         },
 
         setup (props, { emit }) {
             const tabs = [
                 { name: 'edit', label: 'query' },
-                { name: 'preview', label: '预览' }
+                { name: 'preview', label: window.i18n.t('预览') }
             ]
             const currentInstance = getCurrentInstance()
             const activeTab = ref('edit')
             const renderQueryParams = ref([])
             const queryString = computed(() => parseQueryScheme2QueryString(renderQueryParams.value, props.getParamVal))
 
-            const handlePlusBrotherNode = () => {
-                renderQueryParams.value.push(getDefaultApiUseScheme())
-                triggleChange()
+            const handlePlusBrotherNode = (index) => {
+                renderQueryParams.value.splice(index + 1, 0, getDefaultApiUseScheme())
+                triggerChange()
             }
 
             const handleMinusNode = (index) => {
                 renderQueryParams.value.splice(index, 1)
-                triggleChange()
+                triggerChange()
             }
 
             const handleUpdate = (index, param) => {
                 renderQueryParams.value[index] = param
-                triggleChange()
+                triggerChange()
             }
 
-            const triggleChange = () => {
+            const triggerChange = () => {
                 emit('change', renderQueryParams.value)
             }
 

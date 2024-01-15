@@ -3,25 +3,25 @@
         <bk-dialog v-model="isShow"
             render-directive="if"
             theme="primary"
-            title="设置模板"
+            :title="$t('设置模板')"
             width="600"
             :mask-close="false"
             :auto-close="false"
             header-position="left"
-            ext-cls="set-template-dialog"
+            ext-cls="set-template-dialog header-small-padding-dialog"
         >
-            <bk-form ref="pageTemplateFrom" class="dialog-form" :label-width="120">
-                <bk-form-item label="是否公开" required property="isOffcial" error-display-type="normal">
+            <bk-form ref="pageTemplateFrom" class="dialog-form" :label-width="300" form-type="vertical">
+                <bk-form-item :label="$t('form_是否公开')" required property="isOffcial" error-display-type="normal">
                     <bk-radio-group v-model="formData.isOffcial">
-                        <bk-radio :value="1" style="margin-right: 20px;">是</bk-radio>
-                        <bk-radio :value="0">否</bk-radio>
+                        <bk-radio :value="1" style="margin-right: 20px;">{{ $t('是') }}</bk-radio>
+                        <bk-radio :value="0">{{ $t('否') }}</bk-radio>
                     </bk-radio-group>
                 </bk-form-item>
                 <section v-if="formData.isOffcial">
-                    <bk-form-item label="模板封面" property="templateImg" error-display-type="normal" style="margin-top: 20px">
+                    <bk-form-item :label="$t('form_模板封面')" property="templateImg" error-display-type="normal" style="margin-top: 20px">
                         <src-input v-model="formData.templateImg" :project-id="projectId" file-type="img" @change="handleImgChange" />
                     </bk-form-item>
-                    <bk-form-item label="应用模板分类" required property="offcialType" error-display-type="normal">
+                    <bk-form-item :label="$t('form_应用模板分类')" required property="offcialType" error-display-type="normal">
                         <bk-select
                             :clearable="false"
                             v-model="formData.offcialType"
@@ -36,8 +36,8 @@
                 <bk-button
                     theme="primary"
                     :loading="isLoading"
-                    @click="handleDialogConfirm">确定</bk-button>
-                <bk-button :disabled="isLoading" @click="() => isShow = false">取消</bk-button>
+                    @click="handleDialogConfirm">{{ $t('确定') }}</bk-button>
+                <bk-button :disabled="isLoading" @click="() => isShow = false">{{ $t('取消') }}</bk-button>
             </div>
         </bk-dialog>
     </section>
@@ -81,7 +81,7 @@
                     if (this.formData.isOffcial && !this.formData.offcialType) {
                         this.$bkMessage({
                             theme: 'error',
-                            message: '模板分类不能为空'
+                            message: window.i18n.t('模板分类不能为空')
                         })
                         return
                     } else {
@@ -101,7 +101,7 @@
                         this.refreshList()
                         this.$bkMessage({
                             theme: 'success',
-                            message: '设置成功'
+                            message: window.i18n.t('设置成功')
                         })
                     }
                 } catch (err) {

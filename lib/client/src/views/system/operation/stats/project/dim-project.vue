@@ -4,14 +4,14 @@
             <bk-date-picker class="filter-item"
                 v-model="filters.dateRange"
                 type="daterange"
-                placeholder="创建时间"
+                :placeholder="$t('创建时间')"
                 @change="handleTimeChange"
                 :shortcuts="dateShortcuts[0]">
             </bk-date-picker>
             <bk-input
                 class="filter-item search-input"
                 clearable
-                placeholder="按应用名/ID搜索"
+                :placeholder="$t('按应用名/ID搜索')"
                 right-icon="bk-icon icon-search"
                 @clear="handleKeywordClear"
                 @enter="handleKeywordEnter"
@@ -50,6 +50,7 @@
                         </template>
                     </template>
                 </bk-table-column>
+                <empty-status slot="empty" :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
             </bk-table>
         </div>
     </div>
@@ -78,11 +79,11 @@
                 },
                 orderBy: undefined,
                 columns: [
-                    { id: 'projectName', name: '应用名', tooltip: true },
-                    { id: 'createUser', name: '创建者', tooltip: true },
-                    { id: 'projectCode', name: '应用ID', tooltip: true },
-                    { id: 'pageCount', name: '应用页面数', sortable: 'custom', dynamic: true, type: 'number' },
-                    { id: 'createTime', name: '创建时间', sortable: 'custom', type: 'datetime' }
+                    { id: 'projectName', name: window.i18n.t('table_应用名'), tooltip: true },
+                    { id: 'createUser', name: window.i18n.t('创建者'), tooltip: true },
+                    { id: 'projectCode', name: window.i18n.t('应用ID'), tooltip: true },
+                    { id: 'pageCount', name: window.i18n.t('table_应用页面数'), sortable: 'custom', dynamic: true, type: 'number' },
+                    { id: 'createTime', name: window.i18n.t('table_创建时间'), sortable: 'custom', type: 'datetime' }
                 ],
                 filters: {
                     keyword: '',
@@ -90,7 +91,8 @@
                 },
                 fetching: {
                     base: false
-                }
+                },
+                emptyType: 'noData'
             }
         },
         computed: {
@@ -115,6 +117,12 @@
             },
             async getProjectBase () {
                 this.fetching.base = true
+                const dateRanges = this.filters.dateRange?.filter(item => item)
+                if (this.filters.keyword || dateRanges?.length) {
+                    this.emptyType = 'search'
+                } else {
+                    this.emptyType = 'noData'
+                }
                 try {
                     const { data: [list, total] } = await http.post('/operation/stats/project/base', this.params)
                     this.list = list.map((item) => ({
@@ -205,6 +213,11 @@
                 })
 
                 return results
+            },
+            handlerClearSearch () {
+                this.filters.dateRange = []
+                this.filters.keyword = ''
+                this.handleKeywordClear()
             }
         }
     }

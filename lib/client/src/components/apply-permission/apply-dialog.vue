@@ -69,6 +69,9 @@
         },
         data () {
             return {
+                applyText: window.i18n.t('去申请'),
+                appliedText: window.i18n.t('已申请'),
+                cancelText: window.i18n.t('取消'),
                 isLoading: false,
                 isShowDialog: false,
                 isAppleFlag: true,
@@ -86,11 +89,6 @@
                 }
                 return []
             }
-        },
-        created () {
-            this.applyText = '去申请'
-            this.appliedText = '已申请'
-            this.cancelText = '取消'
         },
         methods: {
             /**

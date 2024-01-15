@@ -13,7 +13,7 @@
             </bk-button>
         </comp-box>
         <bk-button
-            v-bk-tooltips="buttons.length > 9 ? '按钮数量已达上限' : '添加按钮'"
+            v-bk-tooltips="buttons.length > 9 ? $t('按钮数量已达上限') : $t('添加按钮')"
             ext-cls="create-btn"
             icon="plus"
             :disabled="buttons.length > 9"
@@ -40,7 +40,10 @@
         computed: {
             ...mapState('nocode/dataManage', ['activeNode', 'selectedComp', 'pageConfig']),
             buttons () {
-                return (this.activeNode ? this.pageConfig[this.activeNode].buttons : this.pageConfig.buttons) || [] // 兼容旧数据不存在按钮配置
+                if (this.activeNode) {
+                    return this.pageConfig[this.activeNode]?.buttons || []
+                }
+                return this.pageConfig.buttons || []
             }
         },
         methods: {
@@ -62,7 +65,7 @@
                 const buttons = this.buttons.slice(0)
                 const button = {
                     id: `Button-${uuid(8)}`,
-                    name: '按钮',
+                    name: this.$t('按钮'),
                     props: {},
                     events: { click: { enable: false, name: '' } },
                     perms: []
@@ -76,8 +79,8 @@
             handleCopy (comp) {
                 const buttons = this.buttons.slice(0)
                 const copy = Object.assign({}, comp, { id: `button-${uuid(8)}` })
-                const index = buttons.find(item => item.id === comp.id)
-                buttons.splice(index, 0, copy)
+                const index = buttons.findIndex(item => item.id === comp.id)
+                buttons.splice(index + 1, 0, copy)
                 this.updatePageConfig(buttons)
             },
             handleDelete (comp) {
@@ -90,6 +93,9 @@
             updatePageConfig (buttons) {
                 const pageConfig = cloneDeep(this.pageConfig)
                 if (this.activeNode) {
+                    if (!this.pageConfig[this.activeNode]) {
+                        pageConfig[this.activeNode] = {}
+                    }
                     pageConfig[this.activeNode].buttons = buttons
                 } else {
                     pageConfig.buttons = buttons

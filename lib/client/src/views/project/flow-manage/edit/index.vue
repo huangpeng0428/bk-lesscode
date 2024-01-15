@@ -12,12 +12,9 @@
     <section class="flow-edit-wrapper">
         <div class="page-header-container">
             <div class="nav-container">
-                <back-btn
-                    :from-page-list="fromPageList"
-                    :flow-config="flowConfig"
-                    :deploy-pending="deployPending"
-                    @deploy="deployFlow">
-                </back-btn>
+                <div class="go-back-icon-wrapper">
+                    <i class="bk-drag-icon bk-drag-arrow-back" @click="handleBackClick"></i>
+                </div>
                 <flow-selector
                     :list="flowList"
                     :list-loading="listLoading"
@@ -29,7 +26,7 @@
                     v-for="item in steps"
                     :key="item.id"
                     :item="item"
-                    :class="{ active: $route.name === item.id }">
+                    :class="{ 'menu-actived': $route.name === item.id }">
                 </menu-item>
             </div>
             <div class="genarate-action">
@@ -38,10 +35,9 @@
         </div>
         <div v-if="!serviceDataLoading" class="flow-edit-main">
             <router-view
-                :flow-config="flowConfig"
                 :service-data="serviceData"
                 :deploy-pending="deployPending"
-                @deploy="deployFlow">
+                @deploy="handleDeploy">
             </router-view>
         </div>
     </section>
@@ -50,7 +46,6 @@
     import { mapState, mapGetters } from 'vuex'
     import { messageError } from '@/common/bkmagic'
     import MenuItem from '@/views/index/components/action-tool/components/menu-item'
-    import BackBtn from './components/back-btn.vue'
     import FlowSelector from './components/flow-selector.vue'
     import GenerateDataManagePage from './components/generate-data-manage-page.vue'
 
@@ -58,15 +53,14 @@
         name: 'flowEdit',
         components: {
             MenuItem,
-            BackBtn,
             FlowSelector,
             GenerateDataManagePage
         },
         data () {
             return {
                 steps: [
-                    { id: 'flowConfig', icon: 'bk-drag-icon bk-drag-flow-fill', text: '流程设计', func: this.handleStepChange('flowConfig') },
-                    { id: 'flowAdvancedConfig', icon: 'bk-drag-icon bk-drag-set', text: '流程设置', func: this.handleStepChange('flowAdvancedConfig') }
+                    { id: 'flowConfig', icon: 'bk-drag-icon bk-drag-flow-fill', text: this.$t('流程设计'), func: this.handleStepChange('flowConfig') },
+                    { id: 'flowAdvancedConfig', icon: 'bk-drag-icon bk-drag-set', text: this.$t('流程设置'), func: this.handleStepChange('flowAdvancedConfig') }
                 ],
                 flowId: this.$route.params.flowId,
                 listLoading: true,
@@ -75,7 +69,8 @@
                 serviceDataLoading: true,
                 serviceData: {},
                 deployPending: false,
-                fromPageList: false // 是否由页面列表页进入
+                fromPageList: false, // 是否由页面列表页进入
+                allowExitRoute: false // 是否可以离开页面
             }
         },
         computed: {
@@ -86,9 +81,12 @@
             }
         },
         watch: {
-            '$route.params.flowId' (val) {
-                this.flowId = val
-                this.getflowConfig()
+            '$route.params.flowId' (val, oldVal) {
+                console.log(val, oldVal)
+                if (val !== oldVal) {
+                    this.flowId = val
+                    this.getflowConfig()
+                }
             }
         },
         async created () {
@@ -102,6 +100,41 @@
                     vm.fromPageList = true
                 }
             })
+        },
+        beforeRouteLeave (to, from, next) {
+            if (this.flowConfig.deployed || this.allowExitRoute  || to.name === 'createTicketPageEdit') {
+                next()
+                return
+            }
+            let instance
+            const h = this.$createElement
+            const deployFlow = async() => {
+                await this.handleDeploy()
+                instance.close()
+            }
+            const deployApp = () => {
+                instance.close()
+                this.allowExitRoute = true
+                this.$router.push({ name: 'release', params: { projectId: this.projectId } })
+            }
+            const leave = () => {
+                next()
+                instance.close()
+            }
+            instance = this.$bkInfo({
+                title: window.i18n.t('流程未部署，确认离开？'),
+                width: 420,
+                extCls: 'leave-flow-page-tips',
+                subHeader: h('div', { class: 'tips-content' }, [
+                    window.i18n.t('当前流程未部署，需部署后，预览环境方可生效；如果需要该流程在应用预发布环境或生产环境生效，需将整个应用部署至对应环境。'),
+                    h('div', { class: 'action-btns' }, [
+                        h('bk-button', { props: { theme: 'primary' }, on: { click: deployFlow } }, window.i18n.t('部署流程')),
+                        h('bk-button', { on: { click: deployApp } }, window.i18n.t('部署应用')),
+                        h('bk-button', { on: { click: leave } }, window.i18n.t('离开'))
+                    ])
+                ])
+            })
+
         },
         beforeDestroy () {
             this.$store.commit('nocode/flow/clearFlowConfig')
@@ -150,40 +183,79 @@
                     this.$router.push({ name })
                 }.bind(this)
             },
+            // 保存流程配置数据，部署流程之前需要调用
+            async updateItsmServiceData () {
+                const {
+                    is_supervise_needed, notify, notify_freq, notify_rule, revoke_config, supervise_type, supervisor
+                } = this.serviceData
+                const data = {
+                    can_ticket_agency: false,
+                    display_type: 'INVISIBLE',
+                    workflow_config: {
+                        is_supervise_needed,
+                        notify,
+                        notify_freq,
+                        notify_rule,
+                        revoke_config,
+                        supervise_type,
+                        supervisor,
+                        is_revocable: this.serviceData.revoke_config.type !== 0,
+                        is_auto_approve: false
+                    }
+                }
+                return new Promise((resolve, reject) => {
+                    this.$store.dispatch('nocode/flow/updateServiceData', { id: this.flowConfig.itsmId, data })
+                        .then(() => {
+                            resolve()
+                        }).catch((error) => {
+                            const h = this.$createElement
+                            this.$bkMessage({
+                                theme: 'error',
+                                ellipsisLine: 3,
+                                message: error.message
+                            })
+                            reject(error.message)
+                        })
+                })
+            },
             // 部署流程
-            async deployFlow () {
+            async deployItsmFlow () {
+                return new Promise((resolve, reject) => {
+                    this.$store.dispatch('nocode/flow/deployFlow', this.flowConfig.itsmId)
+                        .then(() => {
+                            resolve()
+                        }).catch((error) => {
+                            const h = this.$createElement
+                            this.$bkMessage({
+                                theme: 'error',
+                                message: error.message
+                            })
+                            reject(error.message)
+                        })
+                })
+            },
+            async handleDeploy () {
                 try {
                     this.deployPending = true
-                    const {
-                        is_supervise_needed, notify, notify_freq, notify_rule, revoke_config, supervise_type, supervisor
-                    } = this.serviceData
-                    const data = {
-                        can_ticket_agency: false,
-                        display_type: 'INVISIBLE',
-                        workflow_config: {
-                            is_supervise_needed,
-                            notify,
-                            notify_freq,
-                            notify_rule,
-                            revoke_config,
-                            supervise_type,
-                            supervisor,
-                            is_revocable: this.serviceData.revoke_config.type !== 0,
-                            is_auto_approve: false
-                        }
-                    }
-                    await this.$store.dispatch('nocode/flow/updateServiceData', { id: this.flowConfig.itsmId, data })
-                    await this.$store.dispatch('nocode/flow/deployFlow', this.flowConfig.itsmId)
+                    await this.updateItsmServiceData()
+                    await this.deployItsmFlow()
                     await this.$store.dispatch('nocode/flow/editFlow', { id: this.flowConfig.id, deployed: 1 })
                     this.$store.commit('nocode/flow/setFlowConfig', { deployed: 1 })
                     this.$bkMessage({
                         theme: 'success',
-                        message: '流程部署成功'
+                        message: window.i18n.t('流程部署成功')
                     })
                 } catch (e) {
                     console.error(e.message || e)
                 } finally {
                     this.deployPending = false
+                }
+            },
+            handleBackClick () {
+                if (this.fromPageList) {
+                    this.$router.push({ name: 'pageList' })
+                } else {
+                    this.$router.push({ name: 'flowList' })
                 }
             }
         }
@@ -210,6 +282,11 @@
         align-items: center;
         .go-back-icon-wrapper {
             margin: 0 21px;
+            i {
+                color: #3a84ff;
+                cursor: pointer;
+                font-size: 13px;
+            }
         }
     }
     .steps-container {
@@ -218,6 +295,10 @@
         justify-content: center;
         min-width: 360px;
         height: 100%;
+        .menu-actived {
+            background: #e1ecff;
+            color: #3a84ff;
+        }
     }
     .genarate-action {
         position: absolute;
@@ -229,4 +310,26 @@
 .flow-edit-main {
     height: calc(100% - 53px);
 }
+</style>
+<style lang="postcss">
+    .leave-flow-page-tips.bk-dialog-wrapper {
+        .tips-content {
+            color: #63656e;
+            font-size: 14px;
+            text-align: left;
+        }
+        .action-btns {
+            margin-top: 30px;
+            text-align: center;
+            .bk-button:not(:last-of-type) {
+                margin-right: 4px;
+            }
+        }
+        .bk-info-box .bk-dialog-sub-header {
+            padding: 3px 24px 26px;
+        }
+        .bk-dialog-footer {
+            display: none;
+        }
+    }
 </style>

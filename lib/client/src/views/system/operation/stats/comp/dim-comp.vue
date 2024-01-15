@@ -4,14 +4,14 @@
             <bk-date-picker class="filter-item"
                 v-model="filters.dateRange"
                 type="daterange"
-                placeholder="创建时间"
+                :placeholder="$t('创建时间')"
                 @change="handleTimeChange"
                 :shortcuts="dateShortcuts[0]">
             </bk-date-picker>
             <bk-input
                 class="filter-item search-input"
                 clearable
-                placeholder="按名称/ID搜索"
+                :placeholder="$t('按名称/ID搜索')"
                 right-icon="bk-icon icon-search"
                 @clear="handleKeywordClear"
                 @enter="handleKeywordEnter"
@@ -46,6 +46,7 @@
                         <template v-else>{{row[column.id]}}</template>
                     </template>
                 </bk-table-column>
+                <empty-status slot="empty" :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
             </bk-table>
         </div>
     </div>
@@ -73,11 +74,11 @@
                     limit: 10
                 },
                 columns: [
-                    { id: 'fullName', name: '自定义组件名', width: '360', tooltip: true },
-                    { id: 'type', name: '自定义组件ID', width: '300', tooltip: true },
-                    { id: 'projectUsedCount', name: '使用应用数', dynamic: true, type: 'number' },
-                    { id: 'pageUsedCount', name: '使用页面数', dynamic: true, type: 'number' },
-                    { id: 'versionCount', name: '版本数', dynamic: true, type: 'number' }
+                    { id: 'fullName', name: window.i18n.t('table_自定义组件名'), width: '360', tooltip: true },
+                    { id: 'type', name: window.i18n.t('table_自定义组件ID'), width: '300', tooltip: true },
+                    { id: 'projectUsedCount', name: window.i18n.t('table_使用应用数'), dynamic: true, type: 'number' },
+                    { id: 'pageUsedCount', name: window.i18n.t('table_使用页面数'), dynamic: true, type: 'number' },
+                    { id: 'versionCount', name: window.i18n.t('table_版本数'), dynamic: true, type: 'number' }
                 ],
                 filters: {
                     keyword: '',
@@ -85,7 +86,8 @@
                 },
                 fetching: {
                     base: false
-                }
+                },
+                emptyType: 'noData'
             }
         },
         computed: {
@@ -109,6 +111,12 @@
             },
             async getCompBase () {
                 this.fetching.base = true
+                const dateRanges = this.filters.dateRange?.filter(item => item)
+                if (this.filters.keyword || dateRanges?.length) {
+                    this.emptyType = 'search'
+                } else {
+                    this.emptyType = 'noData'
+                }
                 try {
                     const { data: [list, total] } = await http.post('/operation/stats/comp/base', this.params)
                     this.list = list.map((item) => ({
@@ -252,6 +260,11 @@
                 })
 
                 return results
+            },
+            handlerClearSearch () {
+                this.filters.dateRange = []
+                this.filters.keyword = ''
+                this.handleKeywordClear()
             }
         }
     }

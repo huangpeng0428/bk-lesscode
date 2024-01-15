@@ -1,43 +1,93 @@
 <template>
     <div class="select-panel">
-        <div
-            class="tab-item"
-            :class="{
-                active: value === 'component'
-            }"
-            v-bk-tooltips.right="'组件库'"
-            role="component-panel-tab"
-            @click="handleChange('component')">
-            <i class="bk-drag-icon bk-drag-custom-comp-default" />
-        </div>
-        <div
-            class="tab-item"
-            :class="{
-                active: value === 'template'
-            }"
-            v-bk-tooltips.right="'页面模板管理'"
-            role="template-panel-tab"
-            @click="handleChange('template')">
-            <i class="bk-drag-icon bk-drag-template-fill" />
-        </div>
-        <div
-            class="tab-item"
-            :class="{
-                active: value === 'tree'
-            }"
-            v-bk-tooltips.right="'页面组件树'"
-            role="component-tree-panel-tab"
-            @click="handleChange('tree')">
-            <i class="bk-drag-icon bk-drag-level-down" />
-        </div>
+        <template v-for="panel in panelList">
+            <div :key="panel.key"
+                class="tab-item"
+                :class="{
+                    active: value === panel.key
+                }"
+                v-bk-tooltips.right="panel.tips"
+                :role="`${panel.key}-panel-tab`"
+                @click="handleChange(panel.key)">
+                <i :class="panel.icon" v-if="panel.icon" />
+                <img :src="panel.img" class="tab-img" v-else>
+            </div>
+        </template>
     </div>
 </template>
 <script>
+    import aiImg from '../../../../../../images/ai-logo.png'
+    import { mapGetters } from 'vuex'
+    import LC from '@/element-materials/core'
+
     export default {
         props: {
             value: String
         },
+        computed: {
+            ...mapGetters('ai', ['isAiAvailable']),
+
+            panelList () {
+                const list = [
+                    {
+                        key: 'component',
+                        tips: window.i18n.t('页面编辑器'),
+                        icon: 'bk-drag-icon bk-drag-custom-comp-default'
+                    },
+                    {
+                        key: 'formEngine',
+                        tips: window.i18n.t('表单编辑器'),
+                        icon: 'bk-drag-icon bk-drag-biaodan'
+                    },
+                    {
+                        key: 'template',
+                        tips: window.i18n.t('页面模板管理'),
+                        icon: 'bk-drag-icon bk-drag-template-fill'
+                    },
+                    {
+                        key: 'icon',
+                        tips: window.i18n.t('图标'),
+                        icon: 'bk-icon icon-smile-shape'
+                    },
+                    {
+                        key: 'tree',
+                        tips: window.i18n.t('页面组件树'),
+                        icon: 'bk-drag-icon bk-drag-level-down'
+                    }
+                ]
+
+                if (this.isAiAvailable) {
+                    list.push({
+                        key: 'BK-GPT',
+                        tips: window.i18n.t('AI开发助手小鲸'),
+                        img: aiImg
+                    })
+                }
+
+                return list
+            }
+        },
+        mounted () {
+            LC.addEventListener('active', this.changePanelCallBack)
+            LC.addEventListener('activeClear', this.changePanelCallBack)
+            LC.addEventListener('activeElementUpdate', this.changePanelCallBack)
+        },
+        beforeDestroy () {
+            LC.removeEventListener('active', this.changePanelCallBack)
+            LC.removeEventListener('activeClear', this.changePanelCallBack)
+            LC.addEventListener('activeElementUpdate', this.changePanelCallBack)
+        },
         methods: {
+            changePanelCallBack () {
+                const activeNode = LC.getActiveNode()
+                const activeElement = LC.getActiveElement()
+
+                if (activeNode?.type === 'widget-form-container' || activeElement) {
+                    this.handleChange('formEngine')
+                } else {
+                    this.handleChange('component')
+                }
+            },
             handleChange (value) {
                 this.$emit('input', value)
                 this.$emit('change', value)
@@ -61,12 +111,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #979BA5;
             &:hover{
                 color: #3a84ff;
             }
             &.active{
                 background-color: #e1ecff;
                 color: #3a84ff;
+            }
+            .tab-img {
+                width: 14px;
+                height: 14px;
             }
         }
     }

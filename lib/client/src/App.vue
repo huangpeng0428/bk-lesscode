@@ -46,7 +46,7 @@
                 navItems: [
                     {
                         icon: 'bk-drag-icon bk-drag-document',
-                        text: '文档',
+                        text: window.i18n.t('文档'),
                         action: () => {
                             const routerUrl = this.$router.resolve({
                                 path: '/help'
@@ -56,14 +56,14 @@
                     },
                     {
                         icon: 'bk-drag-icon bk-drag-comment-fill',
-                        text: '反馈',
+                        text: window.i18n.t('反馈'),
                         action: () => {
                             window.open('https://github.com/TencentBlueKing/bk-lesscode/issues')
                         }
                     }
                 ],
                 routerNameData: ['/home', '/help'],
-                appTabData: [{ name: '产品介绍', url: '/', routerName: 'home' }, { name: '帮助文档', url: '/help', routerName: 'intro' }],
+                appTabData: [{ name: window.i18n.t('产品介绍'), url: '/', routerName: 'home' }, { name: window.i18n.t('帮助文档'), url: '/help', routerName: 'intro' }],
                 isNotPermission: false,
                 authResult: {
                     requiredPermissions: []
@@ -111,6 +111,7 @@
                 bus.$off('not-exist', this.notExistHold)
             })
             await this.$store.dispatch('checkIamNoResourcesPerm')
+            await this.$store.dispatch('ai/checkAiAvailable')
         },
 
         mounted () {
@@ -159,6 +160,11 @@
     .mac {
         /* font-family: PingFang SC, Microsoft Yahei, Helvetica, Aria; */
         font-family: -apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, Helvetica Neue, Arial;
+    }
+
+    input::-webkit-input-placeholder {
+        /* placeholder字体大小 */
+        font-size: 12px;
     }
 
     .dialog-footer {
@@ -231,5 +237,11 @@
         border-radius:50%;
         width:6px;
         height:6px;
+    }
+
+    .header-small-padding-dialog {
+        .bk-dialog-header {
+            padding-bottom: 6px;
+        }
     }
 </style>

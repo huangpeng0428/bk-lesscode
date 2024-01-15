@@ -3,8 +3,11 @@
         :tabs="tabs"
         :active.sync="activeTab"
     >
+        <template slot="tool">
+            <slot name="tool"></slot>
+        </template>
         <section v-if="activeTab === 'edit'">
-            <scheme-header />
+            <scheme-header :show-rule="showRule" />
             <single-scheme
                 ref="singleSchemeRef"
                 :scheme="renderBodyParam"
@@ -12,6 +15,12 @@
                 :plus-brother-disable="true"
                 :disable="disabled"
                 :render-slot="renderSlot"
+                :name-options="nameOptions"
+                :brothers="renderBodyParam.children"
+                :variable-list="variableList"
+                :function-list="functionList"
+                :api-list="apiList"
+                :show-rule="showRule"
                 @minusNode="handleMinusNode"
                 @update="handleUpdate"
             />
@@ -52,13 +61,21 @@
             params: Object,
             renderSlot: Function,
             getParamVal: Function,
-            disabled: Boolean
+            disabled: Boolean,
+            nameOptions: Array,
+            variableList: Array,
+            functionList: Array,
+            apiList: Array,
+            showRule: {
+                type: Boolean,
+                default: true
+            }
         },
 
         setup (props, { emit }) {
             const tabs = [
                 { name: 'edit', label: 'body' },
-                { name: 'preview', label: '预览' }
+                { name: 'preview', label: window.i18n.t('预览') }
             ]
             const currentInstance = getCurrentInstance()
             const activeTab = ref('edit')

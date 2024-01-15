@@ -10,7 +10,7 @@
             @delete="handleDelete">
             <bk-button v-bind="getProperties(button)" text>{{ button.name }}</bk-button>
         </comp-box>
-        <i v-bk-tooltips="'添加操作'" class="bk-icon icon-plus add-btn" @click.stop="handleAdd"></i>
+        <i v-bk-tooltips="$t('添加操作')" class="bk-icon icon-plus add-btn" @click.stop="handleAdd"></i>
     </section>
 </template>
 <script>
@@ -27,7 +27,10 @@
         computed: {
             ...mapState('nocode/dataManage', ['activeNode', 'selectedComp', 'pageConfig']),
             buttons () {
-                return (this.activeNode ? this.pageConfig[this.activeNode].tableActions : this.pageConfig.tableActions) || [] // 兼容旧数据不存在表格操作按钮配置
+                if (this.activeNode) {
+                    return this.pageConfig[this.activeNode]?.tableActions || []
+                }
+                return this.pageConfig.tableActions || []
             }
         },
         methods: {
@@ -43,7 +46,7 @@
                 const buttons = this.buttons.slice(0)
                 buttons.push({
                     id: `Button-${uuid(8)}`,
-                    name: '操作',
+                    name: this.$t('操作'),
                     props: {},
                     events: { click: { enable: false, name: '' } },
                     perms: []
@@ -53,8 +56,8 @@
             handleCopy (comp) {
                 const buttons = this.buttons.slice(0)
                 const copy = Object.assign({}, comp, { id: `button-${uuid(8)}` })
-                const index = buttons.find(item => item.id === comp.id)
-                buttons.splice(index, 0, copy)
+                const index = buttons.findIndex(item => item.id === comp.id)
+                buttons.splice(index + 1, 0, copy)
                 this.updatePageConfig(buttons)
             },
             handleDelete (comp) {
@@ -67,6 +70,9 @@
             updatePageConfig (buttons) {
                 const pageConfig = cloneDeep(this.pageConfig)
                 if (this.activeNode) {
+                    if (!this.pageConfig[this.activeNode]) {
+                        pageConfig[this.activeNode] = {}
+                    }
                     pageConfig[this.activeNode].tableActions = buttons
                 } else {
                     pageConfig.tableActions = buttons

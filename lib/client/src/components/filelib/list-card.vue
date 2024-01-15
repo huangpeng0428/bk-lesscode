@@ -24,7 +24,10 @@
                 type: Array,
                 default: () => []
             },
-            isSearch: Boolean,
+            emptyType: {
+                type: String,
+                default: 'noData'
+            },
             previewEnabled: Boolean,
             cardWidth: Number,
             cardHeight: Number,
@@ -54,6 +57,10 @@
             const handleRemove = (file: UploadFile) => {
                 emit('remove', file)
             }
+            const handlerClearSearch = (searchName) => {
+                emit('clear-search', searchName)
+                emit('search')
+            }
 
             return {
                 UPLOAD_STATUS,
@@ -62,7 +69,8 @@
                 getFileUrl,
                 handleCopyLink,
                 handleRemove,
-                handlePreview
+                handlePreview,
+                handlerClearSearch
             }
         }
     })
@@ -83,8 +91,8 @@
                                     bgColor: '#333',
                                     activeColor: '#3a84ff'
                                 }"
-                                title="上传中"
-                                :title-style="{ color: '#fff', fontSize: '12px' }"
+                                :title="$t('上传中')"
+                                :title-style="{ color: '#fff', fontSize: '12px' , width: $store.state.Language === 'en' ? '120%' : '100%' }"
                                 :num-style="{ color: '#fff', fontSize: '14px' }"
                                 :percent="file.percentage / 100"
                                 v-if="file.status === UPLOAD_STATUS.UPLOADING">
@@ -92,7 +100,7 @@
                             <div v-if="file.status === UPLOAD_STATUS.FAIL" class="fail-content">
                                 <i class="bk-drag-icon bk-drag-close-circle-fill"></i>
                                 <div class="fail-summary">
-                                    <div class="fail-title">上传失败</div>
+                                    <div class="fail-title">{{ $t('上传失败') }}</div>
                                     <div class="fail-message" v-if="file.statusText" v-bk-overflow-tips>{{file.statusText}}</div>
                                 </div>
                             </div>
@@ -105,16 +113,16 @@
                         <div class="filename" :title="file.name">{{file.name}}</div>
                         <div class="actions">
                             <i class="bk-drag-icon bk-drag-link"
-                                v-bk-tooltips.top="'复制链接'"
+                                v-bk-tooltips.top="$t('复制链接')"
                                 @click="handleCopyLink(file)"
                                 v-show="file.status === UPLOAD_STATUS.SUCCESS">
                             </i>
                             <bk-popconfirm
                                 trigger="click"
-                                title="确认要删除该图片？"
-                                content="删除后不可恢复，已引用的组件将显示异常"
+                                :title="$t('确认要删除该图片？')"
+                                :content="$t('删除后不可恢复，已引用的组件将显示异常')"
                                 @confirm="handleRemove(file)">
-                                <i class="bk-drag-icon bk-drag-delet" v-bk-tooltips.top="'删除'"></i>
+                                <i class="bk-drag-icon bk-drag-delet" v-bk-tooltips.top="$t('删除')"></i>
                             </bk-popconfirm>
                         </div>
                     </div>
@@ -122,10 +130,7 @@
             </div>
         </template>
         <div v-else class="list-empty">
-            <bk-exception type="empty" scene="part">
-                <span v-if="isSearch">未找到文件</span>
-                <span v-else>暂无文件</span>
-            </bk-exception>
+            <empty-status :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
         </div>
     </div>
 </template>

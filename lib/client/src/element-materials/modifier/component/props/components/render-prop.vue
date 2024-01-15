@@ -19,23 +19,25 @@
             :describe="describe"
             @change="handleVariableFormatChange">
             <template v-slot:title>
-                <div class="prop-name" @click="toggleShowProp">
-                    <i
-                        :class="{
-                            'bk-icon icon-angle-down': true,
-                            close: !isShowProp
-                        }"
-                    ></i>
-                    <span
-                        :class="{ label: describe.tips }"
-                        v-bk-tooltips="introTips">
-                        {{ displayName }}
-                    </span>
+                <div class="prop-name">
+                    <section class="icon-and-name" @click="toggleShowProp">
+                        <i
+                            :class="{
+                                'bk-icon icon-angle-down': true,
+                                close: !isShowProp
+                            }"
+                        ></i>
+                        <span
+                            :class="{ label: describe.tips }"
+                            v-bk-tooltips="introTips">
+                            {{ displayName }}
+                        </span>
+                    </section>
                 </div>
             </template>
 
             <template v-if="showInnerVariable">
-                <span class="g-prop-sub-title g-mb6">变量类型</span>
+                <span class="g-prop-sub-title g-mb6">{{ $t('变量类型') }}</span>
                 <choose-build-in-variable
                     class="g-mb4"
                     :build-in-variable="buildInVariable"
@@ -50,7 +52,7 @@
             </template>
 
             <template v-if="renderComponentList.length > 1">
-                <span class="g-prop-sub-title g-mb6 g-mt8" v-if="showInnerVariable">属性初始值来源</span>
+                <span class="g-prop-sub-title g-mb6 g-mt8" v-if="showInnerVariable">{{ $t('属性初始值来源') }}</span>
                 <bk-radio-group
                     class="g-prop-radio-group mb12"
                     :value="selectValueType"
@@ -82,33 +84,30 @@
                             :key="`${renderCom.type}_${index}`"
                             :readonly="isReadOnly"
                             :change="handleCodeChange"
-                            v-bind="describe.bindProps" />
+                            v-bind="describe.bindProps"
+                            :last-data-origin="lastDataOrigin" />
                     </template>
                 </template>
             </div>
-
-            <template v-if="describe.operation">
+            <template v-if="showUpdateColumn">
                 <div
                     v-bk-tooltips="{
-                        content: describe.operation.tips,
+                        content: $t('使用值覆盖表头的默认列，请确认后再操作'),
                         placement: 'left-start',
-                        boundary: 'window'
+                        boundary: 'window',
+                        maxWidth: 400
                     }"
-                    :class="[
-                        'g-prop-sub-title g-mb6 g-mt12',
-                        {
-                            'g-config-subline': describe.operation.tips
-                        }
-                    ]"
+                    class="g-prop-sub-title g-mb6 g-mt12 g-config-subline"
                 >
-                    {{ describe.operation.title }}
+                    {{ $t('操作') }}
                 </div>
                 <bk-button
                     class="prop-operation"
                     size="small"
-                    @click="describe.operation.click(formData, syncSlot)"
+                    :loading="isSyncing"
+                    @click="updateColumn"
                 >
-                    {{ describe.operation.name }}
+                    {{ $t('更新表头') }}
                 </bk-button>
             </template>
         </variable-select>
@@ -160,6 +159,9 @@
     import TypePagination from './strategy/pagination.vue'
     import TypeRouteList from './strategy/route-list.vue'
     import TypeChartColor from './strategy/chart-color-set.vue'
+    import TypeRequestSelect from './strategy/request-select.vue'
+    import TypeValueKeyOption from './strategy/value-key-option.vue'
+    import TypeValueKeyItem from './strategy/value-key-item.vue'
 
     const getRealValue = (type, target) => {
         if (type === 'object') {
@@ -184,7 +186,9 @@
             'srcset': 'array',
             // 老数据存在 type = 'hidden' 但是值是 object 的情况
             'hidden': 'object',
-            'pagination': 'object'
+            'pagination': 'object',
+            'value-key-item': 'string',
+            'value-key-options': 'object'
         }
         return valueMap[type] || type
     }
@@ -198,15 +202,15 @@
         filters: {
             valueTypeTextFormat (valueType) {
                 const textMap = {
-                    'areatext': '文本',
-                    'number': '数字',
-                    'object': '对象',
-                    'string': '字符串',
-                    'array': '数组',
-                    'remote': '函数',
-                    'data-source': '数据表',
-                    'table-data-source': '数据表',
-                    'srcset': '图片列表'
+                    'areatext': window.i18n.t('文本'),
+                    'number': window.i18n.t('数字'),
+                    'object': window.i18n.t('对象'),
+                    'string': window.i18n.t('字符串'),
+                    'array': window.i18n.t('数组'),
+                    'remote': window.i18n.t('函数'),
+                    'data-source': window.i18n.t('数据表'),
+                    'table-data-source': window.i18n.t('数据表'),
+                    'srcset': window.i18n.t('图片列表')
                 }
                 return textMap[valueType] || toPascal(valueType)
             }
@@ -233,6 +237,9 @@
             },
             syncSlot: {
                 type: Function
+            },
+            lastDataOrigin: {
+                type: Object
             }
         },
         data () {
@@ -240,7 +247,8 @@
                 selectValueType: '',
                 formData: {},
                 isRenderValueCom: false,
-                isShowProp: true
+                isShowProp: true,
+                isSyncing: false
             }
         },
         computed: {
@@ -277,7 +285,10 @@
                     'srcset': TypeList,
                     'pagination': TypePagination,
                     'route': TypeRouteList,
-                    'chartColor': TypeChartColor
+                    'chartColor': TypeChartColor,
+                    'request-select': TypeRequestSelect,
+                    'value-key-options': TypeValueKeyOption,
+                    'value-key-item': TypeValueKeyItem
                 }
 
                 const typeMap = {
@@ -322,13 +333,24 @@
                     'srcset': 'srcset',
                     'pagination': 'pagination',
                     'route': 'route',
-                    'chartColor': 'chartColor'
+                    'chartColor': 'chartColor',
+                    'request-select': 'request-select',
+                    'value-key-options': 'value-key-options',
+                    'value-key-item': 'value-key-item'
                 }
 
                 let realType = config.type
                 // 属性type支持配置数组，内部逻辑全部按数组处理
                 if (typeof config.type === 'string') {
                     realType = [config.type]
+                }
+                if (typeof config.type === 'function') {
+                    const componentNode = LC.getActiveNode()
+                    const calcType = config.type(componentNode.renderProps)
+                    realType = Array.isArray(calcType) ? calcType : [calcType]
+                    if (!realType.includes(this.selectValueType) && this.selectValueType) {
+                        this.handleValueTypeChange(realType[0])
+                    }
                 }
 
                 return realType.reduce((res, propType) => {
@@ -366,12 +388,13 @@
              * @returns { Object }
              */
             introTips () {
-                const tip = transformTipsWidth(this.describe.tips)
+                const tip = transformTipsWidth(window.i18n.t(this.describe.tips))
                 const commonOptions = {
                     disabled: !tip,
                     interactive: false,
                     placements: ['left-start'],
-                    boundary: 'window'
+                    boundary: 'window',
+                    maxWidth: 300
                 }
                 return typeof tip === 'string'
                     ? {
@@ -410,6 +433,16 @@
             },
             isFormModel () {
                 return this.componentType === 'widget-form' && this.name === 'model'
+            },
+            showUpdateColumn () {
+                return this.name === 'data' && [
+                    'bk-table',
+                    'el-table',
+                    'folding-table',
+                    'search-table',
+                    'widget-bk-table',
+                    'widget-el-table'
+                ].includes(this.componentType)
             }
         },
         watch: {
@@ -452,7 +485,16 @@
                 val
             } = this.describe
             // 属性各个交互类型可以接受的值类型
-            const valueTypes = (Array.isArray(type) ? type : [type]).map(getPropValueType)
+            let realType = type
+            if (typeof type === 'string') {
+                realType = [type]
+            }
+            if (typeof type === 'function') {
+                const componentNode = LC.getActiveNode()
+                const calcType = type(componentNode.renderProps)
+                realType = Array.isArray(calcType) ? calcType : [calcType]
+            }
+            const valueTypes = realType.map(getPropValueType)
             // 该属性的默认值
             const defaultValue = val !== undefined ? val : getDefaultValueByType(valueTypes[0])
             this.defaultValue = _.cloneDeep(defaultValue)
@@ -496,10 +538,19 @@
                     val: formData.renderValue
                 }
 
-                this.$emit('on-change', this.name, {
-                    ...formData,
-                    modifiers: this.describe.modifiers || []
-                })
+                const props = {
+                    ...formData
+                }
+
+                if (this.describe?.modifiers?.length > 0) {
+                    props.modifiers = this.describe.modifiers
+                }
+
+                if (this.describe.directive) {
+                    props.directive = this.describe.directive
+                }
+
+                this.$emit('on-change', this.name, props)
             },
             /**
              * @desc 右上角类型切换，format: value | variable | expression
@@ -583,16 +634,7 @@
                     let code = null
                     let renderValue = this.formData.renderValue
 
-                    let val = getRealValue(type, value)
-
-                    // 防止数据量太大，画布区卡死
-                    if (Array.isArray(val)
-                        && val.length > 100
-                        && ['remote', 'table-data-source', 'data-source', 'select-data-source'].includes(this.formData.valueType)
-                    ) {
-                        val = val.slice(0, 100)
-                        this.messageInfo(`属性【${name}】的值大于 100 条，画布区限制渲染 100 条。实际数据请在预览或者部署后查看`)
-                    }
+                    const val = getRealValue(type, value)
 
                     if (this.formData.valueType === 'remote') {
                         // 配置的是远程函数、数据源
@@ -618,7 +660,7 @@
                 } catch {
                     this.$bkMessage({
                         theme: 'error',
-                        message: `属性【${name}】的值设置不正确`
+                        message: window.i18n.t('属性【{0}】的值设置不正确', [name])
                     })
                 }
             },
@@ -666,6 +708,13 @@
                             }
                         })
                     })
+                })
+            },
+
+            updateColumn () {
+                this.isSyncing = true
+                this.syncSlot(this.name).finally(() => {
+                    this.isSyncing = false
                 })
             }
         }
@@ -718,10 +767,13 @@
             align-items: center;
             border-top: 1px solid #EAEBF0;
             cursor: pointer;
+            .icon-and-name {
+                display: flex;
+                max-width: calc(100% - 65px);
+            }
             .label {
                 border-bottom: 1px dashed #313238;
                 cursor: pointer;
-                max-width: calc(100% - 65px);
                 line-height: 19px;
                 display: inline-block;
             }

@@ -8,211 +8,187 @@
   an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
   specific language governing permissions and limitations under the License.
 -->
-
+<!-- 应用开发页面 -->
 <template>
-    <main class="projects page-content">
-        <div class="page-head">
-            <bk-dropdown-menu trigger="click" :align="'center'" :ext-cls="'create-dropdown'">
-                <div class="dropdown-trigger-btn" slot="dropdown-trigger">
-                    <bk-button theme="primary" icon-right="icon-angle-down">新建</bk-button>
-                </div>
-                <ul class="bk-dropdown-list" slot="dropdown-content">
-                    <template v-if="iamEnable">
-                        <li>
-                            <auth-component auth="create_app">
-                                <a href="javascript:;" slot="forbid">空白应用</a>
-                                <a href="javascript:;" slot="allow" @click="handleCreate('newProject')">空白应用</a>
-                            </auth-component>
-                        </li>
-                        <li>
-                            <auth-component auth="create_app">
-                                <a href="javascript:;" slot="forbid">从模板新建</a>
-                                <a href="javascript:;" slot="allow" @click="handleTempCreate">从模板新建</a>
-                            </auth-component>
-                        </li>
-                        <li>
-                            <auth-component auth="create_app">
-                                <a href="javascript:;" slot="forbid">导入应用</a>
-                                <a href="javascript:;" slot="allow" @click="handleCreate('importProject')">导入应用</a>
-                            </auth-component>
-                        </li>
-                    </template>
-                    <template v-else>
-                        <li><a href="javascript:;" @click="handleCreate('newProject')">空白应用</a></li>
-                        <li><a href="javascript:;" @click="handleTempCreate">从模板新建</a></li>
-                        <li><a href="javascript:;" @click="handleCreate('importProject')">导入应用</a></li>
-                    </template>
+    <main class="project-page-container">
+        <div class="page-head-wrapper">
+            <div class="page-head">
+                <!-- 新建按钮 -->
+                <bk-dropdown-menu trigger="click" :align="'center'" :ext-cls="'create-dropdown'">
+                    <div class="dropdown-trigger-btn" slot="dropdown-trigger">
+                        <bk-button theme="primary" icon-right="icon-angle-down">{{ $t('新建') }}</bk-button>
+                    </div>
+                    <ul class="bk-dropdown-list" slot="dropdown-content">
+                        <template v-if="iamEnable">
+                            <li>
+                                <auth-component auth="create_app">
+                                    <a href="javascript:;" slot="forbid">{{ $t('新建应用') }}</a>
+                                    <a href="javascript:;" slot="allow" @click="handleTempCreate">{{ $t('新建应用') }}</a>
+                                </auth-component>
+                            </li>
+                            <li>
+                                <auth-component auth="create_app">
+                                    <a href="javascript:;" slot="forbid">{{ $t('导入应用') }}</a>
+                                    <a href="javascript:;" slot="allow" @click="handleCreate('importProject')">{{ $t('导入应用') }}</a>
+                                </auth-component>
+                            </li>
+                        </template>
+                        <template v-else>
+                            <li><a href="javascript:;" @click="handleTempCreate">{{ $t('新建应用') }}</a></li>
+                            <li><a href="javascript:;" @click="handleCreate('importProject')">{{ $t('导入应用') }}</a></li>
+                        </template>
+                    </ul>
+                </bk-dropdown-menu>
+                <ul class="filter-links">
+                    <li
+                        v-for="(link, index) in filterLinks"
+                        :key="index"
+                        :class="['link-item', { 'active': filter === link.value }]"
+                        @click="handleClickFilter(link.value)">
+                        {{link.name}}
+                    </li>
                 </ul>
-            </bk-dropdown-menu>
-            <ul class="filter-links">
-                <li
-                    v-for="(link, index) in filterLinks"
-                    :key="index"
-                    :class="['link-item', { 'active': filter === link.value }]"
-                    @click="handleClickFilter(link.value)">
-                    {{link.name}}
-                </li>
-            </ul>
-            <div class="extra">
-                <span class="total" v-show="projectList.length">共<em class="count">{{projectList.length}}</em>个应用</span>
-                <bk-input
-                    style="width: 260px"
-                    placeholder="请输入应用名称或描述"
-                    :clearable="true"
-                    :right-icon="'bk-icon icon-search'"
-                    v-model="keyword"
-                    @clear="handleSearchClear"
-                    @enter="handleSearchEnter">
-                </bk-input>
-                <icon-button-toggle
-                    :icons="displayTypeIcons"
-                    @toggle="handleToggleDisplayType"
-                />
-                <sort-select v-model="sort" :has-default="false" @change="handleSortChange" />
-            </div>
-        </div>
-        <div :class="['page-body', { 'is-empty': !projectList.length }]" v-bkloading="{ isLoading: pageLoading, opacity: 1 }">
-            <div class="page-body-inner" v-show="!pageLoading">
-                <component
-                    :is="listComponent"
-                    :project-list="projectList"
-                    :page-map="pageMap"
-                    :is-search="isSearch"
-                    :filter="filter"
-                    @create="handleCreate"
-                    @preview="handlePreview"
-                    @to-page="handleGotoPage"
-                    @copy="handleCopy"
-                    @export="handleExport"
-                    @rename="handleRename"
-                    @download="handleDownloadSource"
-                    @set-template="handleSetTemplate"
-                    @collect="handleCollect"
-                    @release="handleRelease"
-                />
-            </div>
-        </div>
-
-        <bk-dialog v-model="dialog.create.visible"
-            render-directive="if"
-            theme="primary"
-            width="750"
-            :position="{ top: 100 }"
-            :mask-close="false"
-            :auto-close="false"
-            header-position="left"
-            ext-cls="project-create-dialog">
-            <span slot="header">
-                {{ createDialogTitle }}
-                <i class="bk-icon icon-info-circle" style="font-size: 14px;" v-bk-tooltips.top="{ content: '创建Lesscode应用时，会同步在PaaS平台-开发者中心创建应用的default模块' }"></i>
-            </span>
-            <project-form
-                ref="projectForm"
-                :type="dialog.create.projectType"
-                :props-form-data="dialog.create.formData"
-                :default-layout-list="defaultLayoutList">
-            </project-form>
-            <div class="dialog-footer" slot="footer">
-                <bk-button
-                    theme="primary"
-                    :loading="dialog.create.loading"
-                    @click="handleCreateConfirm">确定</bk-button>
-                <bk-button @click="handleCancel('create')" :disabled="dialog.create.loading">取消</bk-button>
-            </div>
-        </bk-dialog>
-
-        <bk-dialog v-model="dialog.rename.visible"
-            theme="primary"
-            title="重命名"
-            width="600"
-            :mask-close="false"
-            :auto-close="false"
-            header-position="left"
-            @after-leave="handleRenameDialogAfterLeave">
-            <bk-form ref="renameForm" class="rename-form" :label-width="90" :rules="dialog.rename.formRules" :model="dialog.rename.formData">
-                <bk-form-item label="应用名称" required property="projectName" error-display-type="normal">
-                    <bk-input ref="projectRenameInput"
-                        maxlength="60"
-                        v-model="dialog.rename.formData.projectName"
-                        placeholder="由汉字，英文字母，数字组成，20个字符以内">
-                    </bk-input>
-                </bk-form-item>
-            </bk-form>
-            <div class="dialog-footer" slot="footer">
-                <bk-button
-                    theme="primary"
-                    :disabled="activatedProject.projectName === dialog.rename.formData.projectName"
-                    :loading="dialog.rename.loading"
-                    @click="handleRenameConfirm">确定</bk-button>
-                <bk-button @click="handleCancel('rename')" :disabled="dialog.rename.loading">取消</bk-button>
-            </div>
-        </bk-dialog>
-
-        <bk-dialog v-model="dialog.delete.visible"
-            render-directive="if"
-            theme="primary"
-            ext-cls="delete-dialog-wrapper"
-            title="确认删除该应用？"
-            width="500"
-            footer-position="center"
-            :mask-close="false"
-            :auto-close="false"
-            @value-change="handleDeleteDialogToggle">
-            <bk-form ref="deleteForm" class="delete-form" :label-width="0" :rules="dialog.delete.formRules" :model="dialog.delete.formData">
-                <p class="confirm-name">请输入<em title="复制名称">“{{activatedProject.projectName}}”</em>确认</p>
-                <bk-form-item property="projectName" error-display-type="normal">
+                <div class="extra">
+                    <span class="total" v-show="projectList.length">{{ $t('共') }}<em class="count">{{projectList.length}}</em>{{ $t('个应用') }}</span>
                     <bk-input
-                        maxlength="60"
-                        v-model="dialog.delete.formData.projectName"
-                        placeholder="请输入应用名称">
+                        style="width: 260px"
+                        :placeholder="$t('请输入应用名称或描述')"
+                        :clearable="true"
+                        :right-icon="'bk-icon icon-search'"
+                        v-model="keyword"
+                        @clear="handleSearchClear"
+                        @enter="handleSearchEnter">
                     </bk-input>
-                </bk-form-item>
-            </bk-form>
-            <div class="dialog-footer" slot="footer">
-                <bk-button
-                    theme="danger"
-                    :loading="dialog.delete.loading"
-                    @click="handleDeleteConfirm">删除</bk-button>
-                <bk-button @click="handleCancel('delete')" :disabled="dialog.delete.loading">取消</bk-button>
+                    <icon-button-toggle
+                        v-if="filter !== 'archive'"
+                        :icons="displayTypeIcons"
+                        @toggle="handleToggleDisplayType"
+                    />
+                    <sort-select v-model="sort" :has-default="false" @change="handleSortChange" />
+                    <div class="archived-icon" :class="{ 'is-selected': filter === 'archive' }" @click="handleClickFilter('archive')">
+                        <i class="bk-drag-icon bk-drag-countdown" v-bk-tooltips="$t('已归档应用')"></i>
+                    </div>
+                </div>
             </div>
-        </bk-dialog>
+        </div>
+        <div class="page-content projects">
+            <!-- 应用列表 -->
+            <div :class="['page-body', { 'is-empty': !projectList.length }]" v-bkloading="{ isLoading: pageLoading, opacity: 1 }">
+                <div class="page-body-inner" v-show="!pageLoading">
+                    <component
+                        :is="renderComponent"
+                        :project-list="projectList"
+                        :page-map="pageMap"
+                        :empty-type="emptyType"
+                        :filter="filter"
+                        @create="handleCreate"
+                        @preview="handlePreview"
+                        @to-page="handleGotoPage"
+                        @copy="handleCopy"
+                        @export="handleExport"
+                        @archive="handleArchive"
+                        @reset="handleReset"
+                        @rename="handleRename"
+                        @download="handleDownloadSource"
+                        @set-template="handleSetTemplate"
+                        @collect="handleCollect"
+                        @release="handleRelease"
+                        @clearSearch="handlerClearSearch"
+                    />
+                </div>
+            </div>
+            
+            <!-- 应用重命名弹窗 -->
+            <bk-dialog v-model="dialog.rename.visible"
+                theme="primary"
+                :title="$t('重命名')"
+                width="600"
+                :mask-close="false"
+                :auto-close="false"
+                header-position="left"
+                @after-leave="handleRenameDialogAfterLeave">
+                <bk-form ref="renameForm" class="rename-form" :label-width="90" :rules="dialog.rename.formRules" :model="dialog.rename.formData">
+                    <bk-form-item :label="$t('form_应用名称')" required property="projectName" error-display-type="normal">
+                        <bk-input ref="projectRenameInput"
+                            maxlength="60"
+                            v-model="dialog.rename.formData.projectName"
+                            :placeholder="$t('由汉字，英文字母，数字组成，20个字符以内')">
+                        </bk-input>
+                    </bk-form-item>
+                </bk-form>
+                <div class="dialog-footer" slot="footer">
+                    <bk-button
+                        theme="primary"
+                        :disabled="activatedProject.projectName === dialog.rename.formData.projectName"
+                        :loading="dialog.rename.loading"
+                        @click="handleRenameConfirm">{{ $t('确定') }}</bk-button>
+                    <bk-button @click="handleCancel('rename')" :disabled="dialog.rename.loading">{{ $t('取消') }}</bk-button>
+                </div>
+            </bk-dialog>
+            <!-- 删除应用确认弹窗 -->
+            <bk-dialog v-model="dialog.delete.visible"
+                render-directive="if"
+                theme="primary"
+                ext-cls="delete-dialog-wrapper"
+                :title="$t('确认删除该应用？')"
+                width="500"
+                footer-position="center"
+                :mask-close="false"
+                :auto-close="false"
+                @value-change="handleDeleteDialogToggle">
+                <bk-form ref="deleteForm" class="delete-form" :label-width="0" :rules="dialog.delete.formRules" :model="dialog.delete.formData">
+                    <p class="confirm-name">{{ $t('请输入') }}<em :title="$t('复制名称')">“{{activatedProject.projectName}}”</em>{{ $t('确认') }}</p>
+                    <bk-form-item property="projectName" error-display-type="normal">
+                        <bk-input
+                            maxlength="60"
+                            v-model="dialog.delete.formData.projectName"
+                            :placeholder="$t('请输入应用名称')">
+                        </bk-input>
+                    </bk-form-item>
+                </bk-form>
+                <div class="dialog-footer" slot="footer">
+                    <bk-button
+                        theme="danger"
+                        :loading="dialog.delete.loading"
+                        @click="handleDeleteConfirm">{{ $t('删除') }}</bk-button>
+                    <bk-button @click="handleCancel('delete')" :disabled="dialog.delete.loading">{{ $t('取消') }}</bk-button>
+                </div>
+            </bk-dialog>
 
-        <template-dialog ref="templateDialog" @preview="handlePreview" @to-page="handleGotoPage"></template-dialog>
+            <create-empty-project-dialog ref="createDialog" />
 
-        <download-dialog ref="downloadDialog"></download-dialog>
+            <template-dialog ref="templateDialog" @preview="handlePreview"></template-dialog>
 
-        <export-dialog ref="exportDialog"></export-dialog>
+            <download-dialog ref="downloadDialog"></download-dialog>
 
-        <set-template-dialog ref="setTemplateDialog" :refresh-list="getProjectList"></set-template-dialog>
+            <export-dialog ref="exportDialog"></export-dialog>
+
+            <set-template-dialog ref="setTemplateDialog" :refresh-list="getProjectList"></set-template-dialog>
+        </div>
     </main>
 </template>
 
 <script>
     import { mapGetters } from 'vuex'
-    import dayjs from 'dayjs'
-    import ProjectForm from '../components/project-form'
     import PagePreviewThumb from '@/components/project/page-preview-thumb.vue'
     import ExportDialog from '../components/export-dialog'
     import DownloadDialog from '../components/download-dialog'
     import TemplateDialog from '../components/template-dialog'
+    import CreateEmptyProjectDialog from '../components/create-empty-project-dialog'
     import IconButtonToggle from '@/components/ui/icon-button-toggle.vue'
     import SortSelect from '@/components/project/sort-select'
     import ListCard from './children/list-card.vue'
     import ListTable from './children/list-table.vue'
     import SetTemplateDialog from '../components/set-template-dialog.vue'
-    import relativeTime from 'dayjs/plugin/relativeTime'
-    import 'dayjs/locale/zh-cn'
-
-    dayjs.extend(relativeTime)
-    dayjs.locale('zh-cn')
-
+    import dayjs from '@/common/dayjs'
+    
     export default {
         components: {
-            ProjectForm,
             PagePreviewThumb,
             ExportDialog,
             DownloadDialog,
             TemplateDialog,
+            CreateEmptyProjectDialog,
             SetTemplateDialog,
             IconButtonToggle,
             SortSelect,
@@ -225,17 +201,11 @@
                 projectList: [],
                 pageMap: {},
                 filterLinks: [
-                    { name: '全部应用', value: '' },
-                    { name: '我创建的', value: 'my' },
-                    { name: '我收藏的', value: 'favorite' }
+                    { name: window.i18n.t('全部应用'), value: '' },
+                    { name: window.i18n.t('我创建的'), value: 'my' },
+                    { name: window.i18n.t('我收藏的'), value: 'favorite' }
                 ],
                 dialog: {
-                    create: {
-                        visible: false,
-                        loading: false,
-                        projectType: 'newProject',
-                        formData: {}
-                    },
                     rename: {
                         visible: false,
                         loading: false,
@@ -246,7 +216,7 @@
                             projectName: [
                                 {
                                     regex: /^[a-zA-Z0-9\u4e00-\u9fa5]{1,20}$/,
-                                    message: '由汉字，英文字母，数字组成，20个字符以内',
+                                    message: window.i18n.t('由汉字，英文字母，数字组成，20个字符以内'),
                                     trigger: 'blur'
                                 }
                             ]
@@ -262,14 +232,14 @@
                             projectName: [
                                 {
                                     required: true,
-                                    message: '必填项',
+                                    message: window.i18n.t('必填项'),
                                     trigger: 'blur'
                                 },
                                 {
                                     validator: (val) => {
                                         return this.activatedProject.projectName === val
                                     },
-                                    message: '名称不一致，请重试',
+                                    message: window.i18n.t('名称不一致，请重试'),
                                     trigger: 'blur'
                                 }
                             ]
@@ -279,11 +249,9 @@
                 activatedProject: {},
                 pageLoading: true,
                 projectCodeOldValue: '',
-                defaultLayoutList: [],
-                layoutFullList: [],
                 displayTypeIcons: [
-                    { name: 'card', icon: 'display-card', title: '卡片' },
-                    { name: 'list', icon: 'display-list', title: '列表' }
+                    { name: 'card', icon: 'display-card', title: window.i18n.t('卡片') },
+                    { name: 'list', icon: 'display-list', title: window.i18n.t('列表') }
                 ],
                 listComponent: ListCard.name,
                 sort: 'createTime', // 应用的默认排序为id相当于创建时间
@@ -302,12 +270,18 @@
             filter () {
                 return this.$route.query.filter || ''
             },
-            createDialogTitle () {
-                const { projectType } = this.dialog.create
-                return projectType === 'copyProject' ? '复制应用' : (projectType === 'importProject') ? '导入应用' : '新建应用'
+            emptyType () {
+                if (this.$route.query?.q?.length > 0) {
+                    return 'search'
+                }
+                return 'noData'
             },
-            isSearch () {
-                return this.$route.query?.q?.length > 0
+            renderComponent () {
+                if (this.filter === 'archive') {
+                    return ListTable.name
+                } else {
+                    return this.listComponent
+                }
             }
         },
         watch: {
@@ -322,7 +296,6 @@
         },
         created () {
             this.getProjectList()
-            this.getDefaultLayout()
         },
         methods: {
             getCursorData () {
@@ -334,21 +307,6 @@
             },
             hideSelectorPanel () {
                 console.error('hideSelectorPanel')
-            },
-            async getDefaultLayout () {
-                try {
-                    const layoutList = await this.$store.dispatch('layout/getPlatformList')
-                    layoutList.forEach(item => {
-                        const isEmptyType = ['empty', 'mobile-empty'].includes(item.type)
-                        item.isDefault = isEmptyType
-                        item.checked = isEmptyType
-                        item.disabled = isEmptyType
-                    })
-                    this.layoutFullList = layoutList
-                    this.defaultLayoutList = this.layoutFullList.filter(item => item.type !== 'mobile-empty')
-                } catch (e) {
-                    console.error(e)
-                }
             },
             async getProjectList () {
                 this.pageLoading = true
@@ -378,92 +336,15 @@
                 const latestPage = this.pageMap[project.id] ? this.pageMap[project.id][0] : null
                 return latestPage ? {
                     updateUser: latestPage.updateUser || 'admin',
-                    updateTimeFromNow: `${dayjs(latestPage.updateTime).fromNow()}更新`,
+                    updateTimeFromNow: window.i18n.t('{0}更新', [dayjs(latestPage.updateTime).fromNow()]),
                     updateTime: latestPage.updateTime
                 } : {
                     updateUser: project.createUser || 'admin',
-                    updateTimeFromNow: `${dayjs(project.createTime).fromNow()}创建`,
+                    updateTimeFromNow: window.i18n.t('{0}创建', [dayjs(project.createTime).fromNow()]),
                     updateTime: project.createTime
                 }
             },
-            async handleCreateConfirm () {
-                try {
-                    const data = this.$refs.projectForm.formData || {}
-                    await this.$refs.projectForm.validate()
-
-                    const { projectType } = this.dialog.create
-
-                    let actionMethod = 'project/create'
-                    if (projectType === 'newProject') {
-                        const layouts = this.layoutFullList.filter(layout => layout.checked || layout.type === 'mobile-empty').map(layout => {
-                            return {
-                                layoutId: layout.id,
-                                routePath: layout.defaultPath,
-                                isDefault: layout.isDefault,
-                                showName: layout.defaultName,
-                                layoutCode: layout.defaultCode,
-                                content: layout.defaultContent,
-                                layoutType: layout.layoutType
-                            }
-                        })
-                        data.layouts = layouts
-                    } else if (projectType === 'importProject') {
-                        actionMethod = 'project/import'
-                        const importProjectData = this.$refs.projectForm?.importProjectData || {}
-                        console.log(importProjectData, 223)
-                        if (typeof importProjectData?.route !== 'object' || typeof importProjectData?.func !== 'object' || typeof importProjectData?.page !== 'object') {
-                            this.$bkMessage({
-                                theme: 'error',
-                                message: '请先上传符合规范的应用json'
-                            })
-                            return
-                        }
-                        Object.assign(data, { importProjectData, copyFrom: undefined })
-                    }
-                    
-                    this.dialog.create.loading = true
-                    const projectId = await this.$store.dispatch(actionMethod, { data })
-
-                    this.messageSuccess('应用创建成功')
-                    this.dialog.create.visible = false
-
-                    setTimeout(() => {
-                        this.handleGotoPage(projectId)
-                    }, 300)
-                } catch (e) {
-                    console.error(e)
-                } finally {
-                    this.dialog.create.loading = false
-                }
-            },
-            async handleImportConfirm () {
-                try {
-                    await this.$refs.projectForm.validate()
-                    const importProjectData = this.$refs.projectForm?.importProjectData || {}
-                    if (typeof importProjectData?.route !== 'object' || typeof importProjectData?.func !== 'object' || typeof importProjectData?.page !== 'object') {
-                        this.$bkMessage({
-                            theme: 'error',
-                            message: '请先上传符合规范的应用json'
-                        })
-                        return
-                    }
-                    const data = this.$refs.projectForm.formData
-                    Object.assign(data, { importProjectData })
-                    this.dialog.create.loading = true
-                    const projectId = await this.$store.dispatch('project/import', { data })
-
-                    this.messageSuccess('应用创建成功')
-                    this.dialog.create.visible = false
-
-                    setTimeout(() => {
-                        this.handleGotoPage(projectId)
-                    }, 300)
-                } catch (e) {
-                    console.error(e)
-                } finally {
-                    this.dialog.create.loading = false
-                }
-            },
+            
             async handleCollect (project) {
                 try {
                     const favorite = project.favorite ? 0 : 1
@@ -472,7 +353,7 @@
                         favorite
                     }
                     await this.$store.dispatch('project/favorite', { data })
-                    this.messageSuccess(`${favorite ? '添加' : '取消'}成功`)
+                    this.messageSuccess(`${favorite ? window.i18n.t('添加') : window.i18n.t('取消')}` + window.i18n.t('成功'))
 
                     // 更新数据状态
                     project.favorite = favorite
@@ -501,7 +382,7 @@
 
                     await this.$store.dispatch('project/update', { data })
 
-                    this.messageSuccess('重命名成功')
+                    this.messageSuccess(window.i18n.t('重命名成功'))
                     this.dialog.rename.visible = false
 
                     const activeProject = this.projectList.find(project => project.id === id)
@@ -524,7 +405,7 @@
 
                     await this.$store.dispatch('project/delete', { config: { data } })
 
-                    this.messageSuccess('删除成功')
+                    this.messageSuccess(window.i18n.t('删除成功'))
                     this.dialog.delete.visible = false
 
                     this.getProjectList()
@@ -554,22 +435,59 @@
                 this.dialog.delete.formData.projectName = ''
             },
             handleCreate (type = 'newProject') {
-                this.dialog.create.projectType = type
-                this.dialog.create.formData.projectName = ''
-                this.dialog.create.formData.copyFrom = null
-                this.dialog.create.visible = true
+                this.$refs.createDialog.projectType = type
+                this.$refs.createDialog.formData.projectName = ''
+                this.$refs.createDialog.formData.copyFrom = null
+                this.$refs.createDialog.visible = true
             },
             async handleCopy (project) {
-                this.dialog.create.projectType = 'copyProject'
-                this.dialog.create.formData.copyFrom = project.id
-                this.dialog.create.formData.projectName = `${project.projectName}copy`
-                this.dialog.create.visible = true
+                this.$refs.createDialog.projectType = 'copyProject'
+                this.$refs.createDialog.formData.copyFrom = project.id
+                this.$refs.createDialog.formData.framework = project.framework || 'vue2'
+                this.$refs.createDialog.formData.projectName = `${project.projectName}copy`
+                this.$refs.createDialog.visible = true
             },
             async handleExport (project) {
                 this.$refs.exportDialog.isShow = true
                 this.$refs.exportDialog.projectId = project.id
                 this.$refs.exportDialog.projectCode = project.projectCode
                 this.$refs.exportDialog.projectName = project.projectName
+            },
+            async handleArchive (projectId) {
+                this.projectItemId = projectId
+                this.$bkInfo({
+                    title: this.$t('确认归档该应用？'),
+                    subTitle: this.$t('归档后该应用将无法正常使用，可以在归档应用列表恢复应用'),
+                    confirmFn: async () => {
+                        await this.toggleArchive(this.projectItemId, 1)
+                    }
+                })
+            },
+            async handleReset (projectId) {
+                await  this.toggleArchive(projectId, 0)
+            },
+            async toggleArchive (projectId, isArchive) {
+                const action = isArchive === 1 ? '归档' : '恢复'
+                try {
+                    const res = await this.$store.dispatch('project/update', {
+                        data: {
+                            id: projectId,
+                            fields: {
+                                archiveFlag: isArchive
+                            }
+                        }
+                    })
+                    this.$bkMessage({
+                        theme: 'success',
+                        message: this.$t(`${action}成功`)
+                    })
+                    this.getProjectList()
+                } catch (err) {
+                    this.$bkMessage({
+                        theme: 'error',
+                        message: err.message || this.$t(`${action}失败`)
+                    })
+                }
             },
             handleDownloadSource (project) {
                 this.$refs.downloadDialog.isShow = true
@@ -582,7 +500,8 @@
                 this.$refs.setTemplateDialog.projectId = project.id
                 this.$refs.setTemplateDialog.formData = {
                     isOffcial: project.isOffcial,
-                    offcialType: project.offcialType
+                    offcialType: project.offcialType,
+                    templateImg: project?.templateImg?.startsWith('http') ? project.templateImg : ''
                 }
             },
             async handleRename (project) {
@@ -614,9 +533,10 @@
                 this.updateRoute({ query })
             },
             updateRoute (location) {
-                this.$router.push(location).catch(e => e)
+                this.$router.push(location)?.catch(e => e)
             },
             handleGotoPage (projectId) {
+                // 开发应用和页面管理时调用跳到@/views/project/page-manage
                 this.$router.push({
                     name: 'pageList',
                     params: {
@@ -665,6 +585,9 @@
                     const projBUpdateTime = this.getUpdateInfo(projB)?.updateTime
                     return new Date(projBUpdateTime).getTime() - new Date(projAUpdateTime).getTime()
                 })
+            },
+            handlerClearSearch (searchEmpty) {
+                this.keyword = searchEmpty
             }
         }
     }
@@ -679,10 +602,6 @@
 </style>
 
 <style lang="postcss" scoped>
-    .projects {
-        max-width: 1680px;
-        margin: 0 auto;
-    }
 
     .create-dropdown {
         /deep/ .bk-dropdown-trigger .bk-button {
@@ -690,30 +609,79 @@
         }
     }
 
-    .page-head {
-        margin-bottom: 8px;
+    .project-page-container {
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+        background-color: #FAFBFD;
+    }
 
-        .extra {
+    .page-head-wrapper {
+        background: #FFFFFF;
+        box-shadow: 0 2px 4px 0 #1919290d;
+        
+        .page-head {
+            max-width: 1680px;
+            margin: 0 auto;
+            height: 52px;
+            padding: 10px 24px;
             display: flex;
             align-items: center;
-            flex: none;
-            margin-left: auto;
-        }
+            /* margin-bottom: 8px; */
 
-        .total {
-            font-size: 12px;
-            margin-right: 8px;
-            .count {
-                font-style: normal;
-                margin: 0 .1em;
+            .extra {
+                display: flex;
+                align-items: center;
+                flex: none;
+                margin-left: auto;
+            }
+
+            .total {
+                font-size: 12px;
+                margin-right: 8px;
+                .count {
+                    font-style: normal;
+                    margin: 0 .1em;
+                }
+            }
+
+            .archived-icon {
+                margin-left: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 30px;
+                height: 30px;
+                background: #ffffff;
+                border: 1px solid #c4c6cc;
+                border-radius: 2px;
+                cursor: pointer;
+                &.is-selected, &:hover {
+                    i {
+                        color: #3a84ff;
+                    }
+                }
+                i {
+                    font-size: 14px;
+                    transform: rotateY(180deg);
+                    color: #63656e;
+                }
             }
         }
     }
 
+    .projects {
+        max-width: 1680px;
+        margin: 16px auto;
+        padding: 0 0 16px;
+        height: calc(100% - 52px);
+    }
+
     .page-body {
+        padding: 0 24px;
         display: flex;
         flex: 1;
-        height: calc(100% - 40px);
+        height: calc(100% - 60px);
 
         .page-body-inner {
             overflow: hidden;
@@ -773,90 +741,6 @@
         .dialog-footer {
             button {
                 width: 86px;
-            }
-        }
-    }
-
-    .project-create-dialog {
-        .layout-desc {
-            font-size: 12px;
-            color: #979BA5;
-        }
-        .layout-list {
-            display: flex;
-            margin-left: 10px;
-            .list-item {
-                position: relative;
-                width: 158px;
-                height: 120px;
-                background: #ffffff;
-                border-radius: 2px;
-                &:hover {
-                    .default-setting {
-                        display: block;
-                    }
-                }
-                .default-span {
-                    position: absolute;
-                    right: 0;
-                    top: 0;
-                    border-radius: 2px;
-                    font-size: 12px;
-                    padding: 0 5px;
-                }
-                .default-checked {
-                    cursor: default;
-                    color: #fff;
-                    background: #FFB848;
-                }
-                .default-setting {
-                    display: none;
-                    background: #e1ecff;
-                    color: #3a84ff;
-                    cursor: pointer;
-                }
-                .checked-icon-div {
-                    position: absolute;
-                    right: 0;
-                    bottom: 0;
-                    width: 34px;
-                    height: 32px;
-                    background: linear-gradient(135deg,transparent 50%,#3a84ff 50%);
-                    border-radius: 0px 2px 0px;
-                    text-align: right;
-                    .checked-icon {
-                        display: block;
-                        color: #fff;
-                        font-size: 20px;
-                        margin: 12px 0 0 12px;
-                    }
-                }
-            }
-            .layout-empty-item {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #979ba5;
-                font-size: 12px;
-                border: 1px solid #c4c6cc;
-                cursor: default;
-            }
-            .layout-item {
-                cursor: pointer;
-                border: 1px solid #dcdee5;
-                margin-left: 12px;
-                .layout-img {
-                    margin: 6px 6px 0;
-                    img {
-                        width: 146px;
-                        height: 88px;
-                    }
-                }
-                .layout-info {
-                    text-align: center;
-                    font-size: 12px;
-                    color: #63656e;
-                }
             }
         }
     }

@@ -1,31 +1,23 @@
 <template>
     <div class="action-tool-list">
-        <show-function v-if="!hideFunc" />
-        <div class="func-split-line" />
-        <save v-if="!hideSave" :custom="customSave" @save="$emit('save', $event)" />
-        <preview v-if="!hidePreview" />
-        <clear v-if="!hideClear" />
+        <clear v-if="!hideClear" :disabled="disabled" :tips="disabledTips" />
+        <code-and-json v-if="!hideJson" />
     </div>
 </template>
 <script>
-    import Save from './components/save'
-    import Preview from '@/views/index/components/action-tool/components/preview'
+    import CodeAndJson from './components/code-and-json'
     import Clear from './components/clear'
-    import ShowFunction from '@/views/index/components/action-tool/components/show-function'
 
     export default {
         components: {
-            Save,
-            Preview,
             Clear,
-            ShowFunction
+            CodeAndJson
         },
         props: {
-            customSave: Boolean,
-            hideSave: Boolean,
-            hidePreview: Boolean,
-            hideFunc: Boolean,
-            hideClear: Boolean
+            hideJson: Boolean,
+            hideClear: Boolean,
+            disabled: Boolean,
+            disabledTips: String
         }
     }
 </script>
@@ -34,11 +26,5 @@
         display: flex;
         align-items: center;
         height: 100%;
-    }
-    .func-split-line {
-        background-color: #dcdee5;
-        height: 22px;
-        margin-left: 5px;
-        width: 1px;
     }
 </style>

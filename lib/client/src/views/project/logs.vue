@@ -1,8 +1,8 @@
 <template>
     <div :class="[$style['logs'], 'page-content']">
         <div class="page-head" :class="$style['filter']">
-            <div :class="$style['filter-item']">
-                <div :class="$style['label']">类型</div>
+            <div :class="[$style['filter-item'], $style['type']]">
+                <div :class="$style['label']">{{ $t('类型') }}</div>
                 <div :class="$style['form-control']">
                     <bk-select :class="$style['select']" v-model="filter.obj" @change="handleFilterObjChange">
                         <bk-option v-for="option in options.objList"
@@ -13,8 +13,8 @@
                     </bk-select>
                 </div>
             </div>
-            <div :class="$style['filter-item']">
-                <div :class="$style['label']">操作类型</div>
+            <div :class="[$style['filter-item'], $style['type']]">
+                <div :class="$style['label']">{{ $t('form_操作类型') }}</div>
                 <div :class="$style['form-control']">
                     <bk-select :class="$style['select']" v-model="filter.code">
                         <bk-option v-for="option in options.actions[filter.obj]"
@@ -26,7 +26,7 @@
                 </div>
             </div>
             <div :class="[$style['filter-item'], $style['status']]">
-                <div :class="$style['label']">状态</div>
+                <div :class="$style['label']">{{ $t('状态') }}</div>
                 <div :class="$style['form-control']">
                     <bk-select :class="$style['select']" v-model="filter.status">
                         <bk-option v-for="option in options.status"
@@ -38,9 +38,9 @@
                 </div>
             </div>
             <div :class="$style['filter-item']">
-                <div :class="$style['label']">日期区间</div>
+                <div :class="$style['label']">{{ $t('form_日期区间') }}</div>
                 <div :class="$style['form-control']">
-                    <bk-date-picker :class="$style['date-picker']" :shortcuts="dateShortcuts" type="datetimerange"
+                    <bk-date-picker :class="$style['date-picker']" :shortcuts="resDateShortcuts" type="datetimerange"
                         v-model="dateTimeRange"
                         :clearable="false"
                         :shortcut-close="true"
@@ -52,7 +52,7 @@
             </div>
             <div :class="[$style['filter-item'], $style['button']]">
                 <div :class="$style['form-control']">
-                    <bk-button theme="primary" :disabled="fetching.list" @click="handleQuery">查询</bk-button>
+                    <bk-button theme="primary" :disabled="fetching.list" @click="handleQuery">{{ $t('查询') }}</bk-button>
                 </div>
             </div>
         </div>
@@ -67,23 +67,23 @@
                 @page-limit-change="handlePageSizeChange"
                 @page-change="handlePageChange"
                 v-show="!fetching.list">
-                <bk-table-column label="时间" prop="operateTime" min-width="150" show-overflow-tooltip>
+                <bk-table-column :label="$t('时间')" prop="operateTime" min-width="150" show-overflow-tooltip>
                     <template slot-scope="{ row }">
                         <span>{{ row.operateTime | time }}</span>
                     </template>
                 </bk-table-column>
-                <bk-table-column label="操作类型" prop="operateCodeText" min-width="120" show-overflow-tooltip>
+                <bk-table-column :label="$t('table_操作类型')" prop="operateCodeText" min-width="120" show-overflow-tooltip>
                     <template slot-scope="{ row }">
                         <span>{{row.operateCodeText}}</span>
                     </template>
                 </bk-table-column>
-                <bk-table-column label="对象及类型" prop="operateObj" min-width="220" class-name="table-cell-operate-obj" show-overflow-tooltip>
+                <bk-table-column :label="$t('table_对象及类型')" prop="operateObj" min-width="220" class-name="table-cell-operate-obj" show-overflow-tooltip>
                     <template slot-scope="{ row }">
-                        <div :class="$style['operate-obj']"><span :class="$style['label']">类型：</span>{{operateObjNameMap[row.operateObj]}}</div>
-                        <div :class="$style['operate-target']"><span :class="$style['label']">对象：</span>{{row.operateTarget}}</div>
+                        <div :class="$style['operate-obj']"><span :class="$style['label']">{{ $t('类型：') }}</span>{{operateObjNameMap[row.operateObj]}}</div>
+                        <div :class="$style['operate-target']"><span :class="$style['label']">{{ $t('对象：') }}</span>{{row.operateTarget}}</div>
                     </template>
                 </bk-table-column>
-                <bk-table-column label="状态" prop="operateStatus" min-width="120" show-overflow-tooltip>
+                <bk-table-column :label="$t('状态')" prop="operateStatus" min-width="120" show-overflow-tooltip>
                     <template slot-scope="{ row }">
                         <span :class="$style['operate-status']">
                             <i class="bk-drag-icon bk-drag-check-circle-fill" :class="$style['success']" v-if="row.operateStatus"></i>
@@ -92,12 +92,13 @@
                         </span>
                     </template>
                 </bk-table-column>
-                <bk-table-column label="操作人" prop="createUser" min-width="120" show-overflow-tooltip />
-                <bk-table-column label="描述" prop="operateDesc" min-width="300" show-overflow-tooltip>
+                <bk-table-column :label="$t('操作人')" prop="createUser" min-width="120" show-overflow-tooltip />
+                <bk-table-column :label="$t('描述')" prop="operateDesc" min-width="300" show-overflow-tooltip>
                     <template slot-scope="{ row }">
                         <span>{{row.operateDesc}}</span>
                     </template>
                 </bk-table-column>
+                <empty-status slot="empty" :type="emptyType" @clearSearch="handlerClearSearch"></empty-status>
             </bk-table>
         </div>
 
@@ -105,7 +106,7 @@
 </template>
 
 <script>
-    import { mapState } from 'vuex'
+    import { mapGetters } from 'vuex'
     import dayjs from 'dayjs'
     export default {
         filters: {
@@ -114,7 +115,7 @@
                 return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
             },
             statusText: function (value) {
-                return (['失败', '成功'])[value]
+                return ([window.i18n.t('失败'), window.i18n.t('成功')])[value]
             }
         },
         data () {
@@ -135,8 +136,8 @@
                     objList: [],
                     actions: {},
                     status: [
-                        { id: 1, name: '成功' },
-                        { id: 0, name: '失败' }
+                        { id: 1, name: window.i18n.t('成功') },
+                        { id: 0, name: window.i18n.t('失败') }
                     ]
                 },
                 filter: {
@@ -146,11 +147,12 @@
                     timeStart: '',
                     timeEnd: ''
                 },
-                dateShortcutSelectedIndex: 1
+                dateShortcutSelectedIndex: 1,
+                emptyType: 'noData'
             }
         },
         computed: {
-            ...mapState('logs', ['dateShortcuts']),
+            ...mapGetters('logs', ['resDateShortcuts']),
             projectId () {
                 return this.$route.params.projectId
             },
@@ -181,6 +183,7 @@
             },
             async getList () {
                 const params = this.getParams()
+                this.emptyType = 'search'
                 this.fetching.list = true
                 try {
                     const [list, total] = await this.$store.dispatch('logs/getList', { projectId: this.projectId, config: { params } })
@@ -212,7 +215,7 @@
             setFilterDateTime () {
                 let timeRange = this.dateTimeRange
                 if (this.dateShortcutSelectedIndex !== -1) {
-                    timeRange = this.dateShortcuts[this.dateShortcutSelectedIndex].value()
+                    timeRange = this.resDateShortcuts[this.dateShortcutSelectedIndex].value()
                 }
                 this.filter.timeStart = +new Date(`${timeRange[0]}`)
                 this.filter.timeEnd = +new Date(`${timeRange[1]}`)
@@ -224,6 +227,16 @@
             },
             handlePageChange (page) {
                 this.pagination.current = page
+                this.getList()
+            },
+            handlerClearSearch () {
+                const initData = {
+                    obj: '',
+                    code: '',
+                    status: ''
+                }
+                Object.assign(this.filter, initData)
+                this.emptyType = 'noData'
                 this.getList()
             }
         }
@@ -263,6 +276,13 @@
                     }
                 }
 
+                &.type {
+                    flex: none;
+                    .form-control {
+                        width: 200px;
+                    }
+                }
+                    
                 &.status {
                     flex: none;
                     .form-control {
@@ -270,6 +290,7 @@
                     }
                 }
                 &.button {
+                    margin-left: 8px;
                     flex: none;
                 }
 

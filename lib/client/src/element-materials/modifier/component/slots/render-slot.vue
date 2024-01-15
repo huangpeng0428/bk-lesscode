@@ -9,27 +9,29 @@
         <template v-slot:title>
             <section class="slot-title-wrapper">
                 <span class="slot-name">
-                    <i
-                        :class="{
-                            'bk-icon icon-angle-down': true,
-                            close: !isShowSlot
-                        }"
-                        @click="toggleShowSlot"
-                    ></i>
-                    <span
-                        :class="{
-                            'slot-tips': describe.tips
-                        }"
-                        v-bk-tooltips="computedSlotTip"
-                    >
-                        {{ describe.displayName }}
-                        <span v-if="describe.type && describe.type.length <= 1">
-                            ({{ formData.valueType | capFirstLetter }})
+                    <section class="icon-and-name" @click="toggleShowSlot">
+                        <i
+                            :class="{
+                                'bk-icon icon-angle-down': true,
+                                close: !isShowSlot
+                            }"
+                        ></i>
+                        <span
+                            class="name-content"
+                            :class="{
+                                'slot-tips': describe.tips
+                            }"
+                            v-bk-tooltips="computedSlotTip"
+                        >
+                            {{ $t(describe.displayName) && $t(describe.displayName).toLowerCase() }}
+                            <span v-if="describe.type && describe.type.length <= 1">
+                                ({{ formData.valueType | capFirstLetter }})
+                            </span>
                         </span>
-                    </span>
+                    </section>
                 </span>
                 <template v-if="describe.name && describe.name.length > 1">
-                    <span class="slot-label">组件标签</span>
+                    <span class="slot-label">{{ $t('组件标签') }}</span>
                     <bk-radio-group
                         :value="formData.component"
                         @change="handleSlotComponentChange"
@@ -47,7 +49,7 @@
         </template>
 
         <template v-if="showInnerVariable">
-            <span class="g-prop-sub-title g-mb6">变量类型</span>
+            <span class="g-prop-sub-title g-mb6">{{ $t('变量类型') }}</span>
             <choose-build-in-variable
                 class="g-mb4"
                 :build-in-variable="buildInVariable"
@@ -61,16 +63,17 @@
         </template>
 
         <template v-if="describe.type && describe.type.length > 1">
-            <span class="g-prop-sub-title g-mb6 g-mt8" v-if="showInnerVariable">属性初始值来源</span>
+            <span class="g-prop-sub-title g-mb6 g-mt8" v-if="showInnerVariable">{{ $t('属性初始值来源') }}</span>
             <bk-radio-group
                 class="g-prop-radio-group"
                 :value="formData.valueType"
                 @change="handleValueTypeChange"
             >
                 <bk-radio-button
-                    :value="type"
                     v-for="type in describe.type"
-                    :key="type">
+                    :value="type"
+                    :key="type"
+                >
                     {{ type | renderTypeText }}
                 </bk-radio-button>
             </bk-radio-group>
@@ -84,13 +87,14 @@
             :slot-config="describe"
             :type="formData.valueType"
             :change="handleCodeChange"
-            @option-change="(val) => handleSlotChange('keyOptions', val)" />
+        />
         <select-key
-            v-show="describe.keys && describe.keys.length && formData.valueType !== describe.type[0]"
+            v-if="isShowSelectKeys"
             :keys="describe.keys"
-            :value="formData.valueKeys"
+            :value-keys="formData.valueKeys"
             :value-type="formData.valueType"
-            :options="slotVal.keyOptions"
+            :value="slotVal.val"
+            :payload="slotVal.payload"
             @change="(val) => handleSlotChange('valueKeys', val)"
         />
     </variable-select>
@@ -138,16 +142,16 @@
     }
 
     const typeTextMap = {
-        'object': '对象',
-        'number': '数字',
-        'string': '字符串',
-        'array': '数组',
-        'remote': '函数',
-        'data-source': '数据表',
-        'list': '数据列表',
-        'table-list': '数据列表',
-        'select-data-source': '数据表',
-        'select-remote': '函数'
+        'object': window.i18n.t('对象'),
+        'number': window.i18n.t('数字'),
+        'string': window.i18n.t('字符串'),
+        'array': window.i18n.t('数组'),
+        'remote': window.i18n.t('函数'),
+        'data-source': window.i18n.t('数据表'),
+        'list': window.i18n.t('数据列表'),
+        'table-list': window.i18n.t('数据列表'),
+        'select-data-source': window.i18n.t('数据表'),
+        'select-remote': window.i18n.t('函数')
     }
 
     // slot 类型转为可接受的值类型
@@ -218,7 +222,7 @@
              * @returns { Object }
              */
             computedSlotTip () {
-                const transformTips = transformTipsWidth(this.describe.tips)
+                const transformTips = transformTipsWidth(window.i18n.t(this.describe.tips))
                 const tips = typeof transformTips === 'string' ? { content: transformTips } : transformTips
                 const disabled = !this.describe.tips
                 return {
@@ -235,8 +239,7 @@
                 return {
                     val: this.slotTypeValueMemo[this.formData.valueType].val,
                     payload: this.slotTypeValueMemo[this.formData.valueType].payload,
-                    component: this.slotTypeValueMemo[this.formData.valueType].component,
-                    keyOptions: this.slotTypeValueMemo[this.formData.valueType].keyOptions
+                    component: this.slotTypeValueMemo[this.formData.valueType].component
                 }
             },
             /**
@@ -280,6 +283,12 @@
             buildInVariable () {
                 const perVariableName = camelCase(this.componentId, { transform: camelCaseTransformMerge })
                 return `${perVariableName}Slot${this.name}`
+            },
+            /**
+             * 是否展示 SelectKey
+             */
+            isShowSelectKeys () {
+                return this.describe?.keys?.length
             }
         },
         watch: {
@@ -301,14 +310,12 @@
                                 valueType: lastValue.valueType,
                                 buildInVariableType: lastValue.buildInVariableType,
                                 renderValue: lastValue.renderValue,
-                                valueKeys: lastValue.valueKeys || {},
-                                keyOptions: lastValue.keyOptions || []
+                                valueKeys: lastValue.valueKeys || {}
                             })
 
                             this.slotTypeValueMemo[lastValue.valueType] = {
                                 val: lastValue.renderValue,
                                 component: lastValue.component,
-                                keyOptions: lastValue.keyOptions || [],
                                 payload: lastValue.payload || {}
                             }
                         }
@@ -348,8 +355,7 @@
                 valueType: type[0],
                 renderValue: defaultValue,
                 buildInVariableType: '',
-                valueKeys: {},
-                keyOptions: []
+                valueKeys: {}
             })
 
             // 编辑状态缓存
@@ -357,7 +363,6 @@
                 [this.formData.valueType]: {
                     val: defaultValue,
                     component: this.formData.component,
-                    keyOptions: [],
                     payload: {}
                 }
             }
@@ -372,7 +377,6 @@
                 this.slotTypeValueMemo[this.formData.valueType] = {
                     val: this.formData.renderValue,
                     component: this.formData.component,
-                    keyOptions: this.formData.keyOptions,
                     payload: this.formData.payload
                 }
                 this.isInnerChange = true
@@ -450,8 +454,7 @@
                     code,
                     valueType,
                     renderValue: code,
-                    payload: this.slotTypeValueMemo[valueType]?.payload || {},
-                    keyOptions: this.slotTypeValueMemo[valueType]?.keyOptions || []
+                    payload: this.slotTypeValueMemo[valueType]?.payload || {}
                 })
                 this.triggerChange()
                 this.triggerUpdateVariable()
@@ -552,6 +555,14 @@
         display: flex;
         align-items: center;
         border-top: 1px solid #EAEBF0;
+        .icon-and-name {
+            display: flex;
+            cursor: pointer;
+            .name-content {
+                display: flex;
+                align-items: center;
+            }
+        }
         .icon-angle-down {
             cursor: pointer;
             font-size: 20px;
